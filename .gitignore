@@ -1,0 +1,57 @@
+# ============================
+# .NET Core (Backend)
+# ============================
+bin/
+obj/
+*.user
+*.suo
+*.vs/
+*.db
+*.db-journal
+
+# Rider and JetBrains IDEs
+.idea/
+
+# ASP.NET secrets
+secrets.json
+
+# Configuration files
+appsettings.Development.json
+appsettings.Local.json
+
+# ============================
+# React (Frontend)
+# ============================
+node_modules/
+build/
+dist/
+.env
+.env.local
+.env.development
+.env.production
+
+# npm and yarn log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============================
+# Database (optional)
+# ============================
+*.bak
+*.mdf
+*.ldf
+__pycache__/
+*.sqlite
+
+# ============================
+# Visual Studio Code
+# ============================
+.vscode/
+.history/
+
+# ============================
+# System Files
+# ============================
+.DS_Store
+Thumbs.db
