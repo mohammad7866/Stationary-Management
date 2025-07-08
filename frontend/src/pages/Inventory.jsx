@@ -1,34 +1,62 @@
-import React from "react";
-
-const mockInventory = [
-  {
-    id: 1,
-    name: "A4 Paper",
-    category: "Core",
-    stock: 120,
-    office: "London",
-  },
-  {
-    id: 2,
-    name: "Branded Envelopes",
-    category: "Printed",
-    stock: 45,
-    office: "Manchester",
-  },
-  {
-    id: 3,
-    name: "Custom Notebooks",
-    category: "Special",
-    stock: 15,
-    office: "Birmingham",
-  },
-];
+import React, { useState, useEffect } from "react";
+import inventoryItems from "../data/inventoryData";
 
 export default function Inventory() {
+  const [items, setItems] = useState([]);
+  const [filteredItems, setFilteredItems] = useState([]);
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [officeFilter, setOfficeFilter] = useState("All");
+
+  // Load items from mock data
+  useEffect(() => {
+    setItems(inventoryItems);
+    setFilteredItems(inventoryItems);
+  }, []);
+
+  // Filter logic
+  useEffect(() => {
+    let filtered = items;
+
+    if (categoryFilter !== "All") {
+      filtered = filtered.filter((item) => item.category === categoryFilter);
+    }
+
+    if (officeFilter !== "All") {
+      filtered = filtered.filter((item) => item.office === officeFilter);
+    }
+
+    setFilteredItems(filtered);
+  }, [categoryFilter, officeFilter, items]);
+
   return (
     <div style={{ padding: "2rem" }}>
       <h2>Inventory</h2>
-      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
+
+      {/* Filters */}
+      <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+        <div>
+          <label>Filter by Category: </label>
+          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+            <option>All</option>
+            <option>Core</option>
+            <option>Special</option>
+            <option>Printed</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Filter by Office: </label>
+          <select value={officeFilter} onChange={(e) => setOfficeFilter(e.target.value)}>
+            <option>All</option>
+            <option>London</option>
+            <option>Manchester</option>
+            <option>Birmingham</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Table */}
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ background: "#f0f0f0" }}>
             <th style={thStyle}>Item</th>
@@ -38,7 +66,7 @@ export default function Inventory() {
           </tr>
         </thead>
         <tbody>
-          {mockInventory.map((item) => (
+          {filteredItems.map((item) => (
             <tr key={item.id}>
               <td style={tdStyle}>{item.name}</td>
               <td style={tdStyle}>{item.category}</td>
