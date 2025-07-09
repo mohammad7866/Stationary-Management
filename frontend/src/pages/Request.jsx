@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 export default function Requests() {
-  const userRole = "manager"; // Change to "employee", "manager", or "admin"
+  const userRole = "manager"; // "employee", "manager", or "admin"
 
   const [requests, setRequests] = useState([
     {
@@ -11,6 +11,7 @@ export default function Requests() {
       purpose: "Team meeting",
       office: "London",
       status: "Pending",
+      timestamp: "2025-07-08 10:30 AM",
     },
     {
       id: 2,
@@ -19,6 +20,7 @@ export default function Requests() {
       purpose: "Client reports",
       office: "Manchester",
       status: "Approved",
+      timestamp: "2025-07-08 08:15 AM",
     },
   ]);
 
@@ -26,10 +28,12 @@ export default function Requests() {
     item: "",
     quantity: "",
     purpose: "",
-    office: "London", // default
+    office: "London",
   });
 
   const [successMsg, setSuccessMsg] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [sortAsc, setSortAsc] = useState(true);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -48,6 +52,7 @@ export default function Requests() {
       ...form,
       quantity: parseInt(form.quantity, 10),
       status: "Pending",
+      timestamp: new Date().toLocaleString(),
     };
 
     setRequests([...requests, newRequest]);
@@ -63,6 +68,27 @@ export default function Requests() {
     );
     setRequests(updated);
   };
+
+  const getStatusStyle = (status) => {
+    return {
+      padding: "4px 8px",
+      borderRadius: "5px",
+      color: "#fff",
+      backgroundColor:
+        status === "Approved" ? "green" :
+        status === "Rejected" ? "red" :
+        "orange",
+    };
+  };
+
+  const filteredRequests =
+    statusFilter === "All"
+      ? requests
+      : requests.filter((r) => r.status === statusFilter);
+
+  const sortedRequests = [...filteredRequests].sort((a, b) =>
+    sortAsc ? a.quantity - b.quantity : b.quantity - a.quantity
+  );
 
   return (
     <div style={{ padding: "2rem" }}>
@@ -110,6 +136,28 @@ export default function Requests() {
         </form>
       )}
 
+      {/* Filter & Sort Controls */}
+      <div style={{ marginBottom: "1rem" }}>
+        <label>Filter by Status: </label>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{ marginRight: "1rem" }}
+        >
+          <option>All</option>
+          <option>Pending</option>
+          <option>Approved</option>
+          <option>Rejected</option>
+        </select>
+
+        <button
+          onClick={() => setSortAsc(!sortAsc)}
+          style={sortButtonStyle}
+        >
+          Sort by Quantity {sortAsc ? "↑" : "↓"}
+        </button>
+      </div>
+
       <h3>All Requests</h3>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
@@ -118,18 +166,22 @@ export default function Requests() {
             <th style={thStyle}>Quantity</th>
             <th style={thStyle}>Purpose</th>
             <th style={thStyle}>Office</th>
+            <th style={thStyle}>Submitted</th>
             <th style={thStyle}>Status</th>
             {userRole !== "employee" && <th style={thStyle}>Actions</th>}
           </tr>
         </thead>
         <tbody>
-          {requests.map((req) => (
+          {sortedRequests.map((req) => (
             <tr key={req.id}>
               <td style={tdStyle}>{req.item}</td>
               <td style={tdStyle}>{req.quantity}</td>
               <td style={tdStyle}>{req.purpose}</td>
               <td style={tdStyle}>{req.office}</td>
-              <td style={tdStyle}>{req.status}</td>
+              <td style={tdStyle}>{req.timestamp}</td>
+              <td style={tdStyle}>
+                <span style={getStatusStyle(req.status)}>{req.status}</span>
+              </td>
               {userRole !== "employee" && (
                 <td style={tdStyle}>
                   {req.status === "Pending" ? (
@@ -148,9 +200,7 @@ export default function Requests() {
                       </button>
                     </>
                   ) : (
-                    <span style={{ color: req.status === "Approved" ? "green" : "red" }}>
-                      {req.status}
-                    </span>
+                    "-"
                   )}
                 </td>
               )}
@@ -185,6 +235,11 @@ const buttonStyle = {
   border: "none",
   borderRadius: "4px",
   cursor: "pointer",
+};
+
+const sortButtonStyle = {
+  ...buttonStyle,
+  backgroundColor: "#6c757d",
 };
 
 const approveButton = {
