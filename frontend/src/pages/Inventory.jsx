@@ -2,15 +2,13 @@ import React, { useState, useEffect } from "react";
 import inventoryItems from "../data/inventoryData";
 
 export default function Inventory() {
+  const userRole = "admin"; // "employee", "manager", "admin"
+
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [officeFilter, setOfficeFilter] = useState("All");
 
-  // Simulated logged-in user role
-  const userRole = "admin";
-
-  // Form state
   const [newItem, setNewItem] = useState({
     name: "",
     category: "Core",
@@ -20,13 +18,11 @@ export default function Inventory() {
 
   const [successMsg, setSuccessMsg] = useState("");
 
-  // Load mock data on mount
   useEffect(() => {
     setItems(inventoryItems);
     setFilteredItems(inventoryItems);
   }, []);
 
-  // Update filtered list
   useEffect(() => {
     let filtered = [...items];
     if (categoryFilter !== "All") {
@@ -58,8 +54,7 @@ export default function Inventory() {
       office: newItem.office,
     };
 
-    const updatedItems = [...items, itemToAdd];
-    setItems(updatedItems);
+    setItems([...items, itemToAdd]);
     setNewItem({ name: "", category: "Core", stock: "", office: "London" });
     setSuccessMsg("Item added successfully!");
 
@@ -67,8 +62,7 @@ export default function Inventory() {
   };
 
   const handleDelete = (id) => {
-    const updated = items.filter((item) => item.id !== id);
-    setItems(updated);
+    setItems(items.filter((item) => item.id !== id));
   };
 
   return (
@@ -79,17 +73,22 @@ export default function Inventory() {
       {userRole === "admin" && (
         <form onSubmit={handleAddItem} style={formStyle}>
           <h3>Add New Item</h3>
-          {successMsg && <div style={successStyle}>{successMsg}</div>}
+          {successMsg && <p style={successStyle}>{successMsg}</p>}
+
           <input
             type="text"
             name="name"
             placeholder="Item name"
             value={newItem.name}
             onChange={handleChange}
-            required
             style={inputStyle}
           />
-          <select name="category" value={newItem.category} onChange={handleChange} style={inputStyle}>
+          <select
+            name="category"
+            value={newItem.category}
+            onChange={handleChange}
+            style={inputStyle}
+          >
             <option value="Core">Core</option>
             <option value="Special">Special</option>
             <option value="Printed">Printed</option>
@@ -100,10 +99,14 @@ export default function Inventory() {
             placeholder="Stock quantity"
             value={newItem.stock}
             onChange={handleChange}
-            required
             style={inputStyle}
           />
-          <select name="office" value={newItem.office} onChange={handleChange} style={inputStyle}>
+          <select
+            name="office"
+            value={newItem.office}
+            onChange={handleChange}
+            style={inputStyle}
+          >
             <option value="London">London</option>
             <option value="Manchester">Manchester</option>
             <option value="Birmingham">Birmingham</option>
@@ -116,17 +119,22 @@ export default function Inventory() {
       <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
         <div>
           <label>Filter by Category: </label>
-          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
             <option>All</option>
             <option>Core</option>
             <option>Special</option>
             <option>Printed</option>
           </select>
         </div>
-
         <div>
           <label>Filter by Office: </label>
-          <select value={officeFilter} onChange={(e) => setOfficeFilter(e.target.value)}>
+          <select
+            value={officeFilter}
+            onChange={(e) => setOfficeFilter(e.target.value)}
+          >
             <option>All</option>
             <option>London</option>
             <option>Manchester</option>
@@ -155,7 +163,10 @@ export default function Inventory() {
               <td style={tdStyle}>{item.office}</td>
               {userRole === "admin" && (
                 <td style={tdStyle}>
-                  <button onClick={() => handleDelete(item.id)} style={{ color: "red" }}>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    style={deleteButton}
+                  >
                     Delete
                   </button>
                 </td>
@@ -178,27 +189,31 @@ const containerStyle = {
 
 const formStyle = {
   marginBottom: "2rem",
-  border: "1px solid #ccc",
   padding: "1rem",
+  border: "1px solid #ccc",
   borderRadius: "8px",
+  maxWidth: "400px",
 };
 
 const inputStyle = {
-  margin: "0.5rem 0",
+  display: "block",
+  margin: "10px 0",
   padding: "8px",
   width: "100%",
-  maxWidth: "300px",
-  display: "block",
 };
 
 const buttonStyle = {
-  padding: "10px 16px",
-  marginTop: "10px",
+  padding: "8px 16px",
   backgroundColor: "#007bff",
   color: "#fff",
   border: "none",
   borderRadius: "4px",
   cursor: "pointer",
+};
+
+const deleteButton = {
+  ...buttonStyle,
+  backgroundColor: "red",
 };
 
 const successStyle = {

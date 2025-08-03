@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Inventory from "./pages/Inventory";
 import Requests from "./pages/Request";
 import Deliveries from "./pages/Deliveries";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   return (
@@ -20,7 +21,7 @@ function App() {
 
         {/* Page Routes */}
         <Routes>
-          <Route path="/" element={<h2>Welcome to the Dashboard</h2>} />
+          <Route path="/" element={<Dashboard />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/requests" element={<Requests />} />
           <Route path="/deliveries" element={<Deliveries />} />
