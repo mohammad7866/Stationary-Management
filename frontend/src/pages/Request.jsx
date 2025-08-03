@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 export default function Requests() {
-  const userRole = "manager"; // "employee", "manager", or "admin"
+  const userRole = "manager"; // "employee", "manager", "admin"
 
   const [requests, setRequests] = useState([
     {
@@ -69,17 +69,15 @@ export default function Requests() {
     setRequests(updated);
   };
 
-  const getStatusStyle = (status) => {
-    return {
-      padding: "4px 8px",
-      borderRadius: "5px",
-      color: "#fff",
-      backgroundColor:
-        status === "Approved" ? "green" :
-        status === "Rejected" ? "red" :
-        "orange",
-    };
-  };
+  const getStatusStyle = (status) => ({
+    padding: "4px 8px",
+    borderRadius: "5px",
+    color: "#fff",
+    backgroundColor:
+      status === "Approved" ? "green" :
+      status === "Rejected" ? "red" :
+      "orange",
+  });
 
   const filteredRequests =
     statusFilter === "All"
@@ -91,13 +89,14 @@ export default function Requests() {
   );
 
   return (
-    <div style={{ padding: "2rem" }}>
+    <div style={containerStyle}>
       <h2>Stationery Requests</h2>
 
       {userRole === "employee" && (
         <form onSubmit={handleSubmit} style={formStyle}>
           <h3>Submit Request</h3>
-          {successMsg && <p style={{ color: "green" }}>{successMsg}</p>}
+          {successMsg && <p style={successStyle}>{successMsg}</p>}
+
           <input
             type="text"
             name="item"
@@ -136,20 +135,20 @@ export default function Requests() {
         </form>
       )}
 
-      {/* Filter & Sort Controls */}
-      <div style={{ marginBottom: "1rem" }}>
-        <label>Filter by Status: </label>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          style={{ marginRight: "1rem" }}
-        >
-          <option>All</option>
-          <option>Pending</option>
-          <option>Approved</option>
-          <option>Rejected</option>
-        </select>
-
+      {/* Filter & Sort */}
+      <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+        <div>
+          <label>Filter by Status: </label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option>All</option>
+            <option>Pending</option>
+            <option>Approved</option>
+            <option>Rejected</option>
+          </select>
+        </div>
         <button
           onClick={() => setSortAsc(!sortAsc)}
           style={sortButtonStyle}
@@ -158,7 +157,7 @@ export default function Requests() {
         </button>
       </div>
 
-      <h3>All Requests</h3>
+      {/* Requests Table */}
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ background: "#f0f0f0" }}>
@@ -213,6 +212,13 @@ export default function Requests() {
 }
 
 // === Styles ===
+const containerStyle = {
+  background: "#fff",
+  borderRadius: "10px",
+  padding: "20px",
+  boxShadow: "0 0 8px rgba(0,0,0,0.1)",
+};
+
 const formStyle = {
   marginBottom: "2rem",
   padding: "1rem",
@@ -251,6 +257,11 @@ const approveButton = {
 const rejectButton = {
   ...buttonStyle,
   backgroundColor: "red",
+};
+
+const successStyle = {
+  color: "green",
+  marginBottom: "10px",
 };
 
 const thStyle = {
