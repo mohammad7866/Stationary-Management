@@ -1,6 +1,8 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import Inventory from './pages/Inventory';
-import Requests from './pages/Request';
+// frontend/src/App.jsx
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import Inventory from "./pages/Inventory";
+import Requests from "./pages/Request";
+import Deliveries from "./pages/Deliveries";
 
 function App() {
   return (
@@ -8,26 +10,24 @@ function App() {
       <div style={{ padding: "1rem", background: "#f8f9fa" }}>
         <h1>PwC Stationery Management System</h1>
 
-        <nav style={{ marginBottom: "1rem" }}>
-          <Link to="/" style={navStyle}>Home</Link>
-          <Link to="/inventory" style={navStyle}>Inventory</Link>
-          <Link to="/requests" style={navStyle}>Requests</Link>
+        {/* Navigation Menu */}
+        <nav style={{ marginBottom: "1rem", display: "flex", gap: "1rem" }}>
+          <Link to="/" style={{ textDecoration: "none", color: "blue" }}>Dashboard</Link>
+          <Link to="/inventory" style={{ textDecoration: "none", color: "blue" }}>Inventory</Link>
+          <Link to="/requests" style={{ textDecoration: "none", color: "blue" }}>Requests</Link>
+          <Link to="/deliveries" style={{ textDecoration: "none", color: "blue" }}>Deliveries</Link>
         </nav>
 
+        {/* Page Routes */}
         <Routes>
           <Route path="/" element={<h2>Welcome to the Dashboard</h2>} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/requests" element={<Requests />} />
+          <Route path="/deliveries" element={<Deliveries />} />
         </Routes>
       </div>
     </Router>
   );
 }
-
-const navStyle = {
-  marginRight: "1rem",
-  textDecoration: "none",
-  color: "#007bff",
-};
 
 export default App;
