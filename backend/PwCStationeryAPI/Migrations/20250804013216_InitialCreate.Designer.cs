@@ -12,7 +12,7 @@ using PwCStationeryAPI.Data;
 namespace PwCStationeryAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250804001431_InitialCreate")]
+    [Migration("20250804013216_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
