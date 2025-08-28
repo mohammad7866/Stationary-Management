@@ -1,10 +1,18 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace PwCStationeryAPI.Models
 {
     public class Supplier
     {
-        public int Id { get; set; } // Primary key
-        public string Name { get; set; }
-        public string ContactEmail { get; set; }
-        public string Phone { get; set; }
+        public int Id { get; set; }
+
+        [MaxLength(150)]
+        public required string Name { get; set; }
+
+        [MaxLength(150)]
+        public string? ContactEmail { get; set; }
+
+        [MaxLength(40)]
+        public string? Phone { get; set; }
     }
 }
