@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿// backend/PwCStationeryAPI/Controllers/SuppliersController.cs
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PwCStationeryAPI.Data;
+using PwCStationeryAPI.Dtos.Suppliers;
 using PwCStationeryAPI.Models;
 
 namespace PwCStationeryAPI.Controllers
@@ -12,48 +14,122 @@ namespace PwCStationeryAPI.Controllers
         private readonly ApplicationDbContext _db;
         public SuppliersController(ApplicationDbContext db) => _db = db;
 
+        /// <summary>
+        /// List suppliers with optional search (q) and paging.
+        /// </summary>
+        /// <param name="q">Search in name, email, phone (case-insensitive)</param>
+        /// <param name="page">1-based page number</param>
+        /// <param name="pageSize">Items per page (max 100)</param>
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] string? q = null)
+        public async Task<IActionResult> GetAll(
+            [FromQuery] string? q = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
         {
-            var query = _db.Suppliers.AsQueryable();
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize is < 1 or > 100 ? 20 : pageSize;
+
+            var query = _db.Suppliers.AsNoTracking().AsQueryable();
+
             if (!string.IsNullOrWhiteSpace(q))
-                query = query.Where(s => s.Name.Contains(q));
-            return Ok(await query.OrderBy(s => s.Name).ToListAsync());
+            {
+                var term = q.Trim().ToLower();
+                query = query.Where(s =>
+                    EF.Functions.Like(s.Name.ToLower(), $"%{term}%") ||
+                    (s.ContactEmail != null && EF.Functions.Like(s.ContactEmail.ToLower(), $"%{term}%")) ||
+                    (s.Phone != null && EF.Functions.Like(s.Phone.ToLower(), $"%{term}%")));
+            }
+
+            var total = await query.CountAsync();
+
+            var data = await query
+                .OrderBy(s => s.Name)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(s => new ReadSupplierDto
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    ContactEmail = s.ContactEmail,
+                    Phone = s.Phone
+                })
+                .ToListAsync();
+
+            return Ok(new { total, page, pageSize, data });
         }
 
+        /// <summary>Get a supplier by id.</summary>
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetOne(int id)
         {
-            var s = await _db.Suppliers.FindAsync(id);
-            return s is null ? NotFound() : Ok(s);
+            var dto = await _db.Suppliers
+                .AsNoTracking()
+                .Where(s => s.Id == id)
+                .Select(s => new ReadSupplierDto
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    ContactEmail = s.ContactEmail,
+                    Phone = s.Phone
+                })
+                .FirstOrDefaultAsync();
+
+            return dto is null ? NotFound() : Ok(dto);
         }
 
+        /// <summary>Create a supplier.</summary>
         [HttpPost]
-        public async Task<IActionResult> Create(Supplier model)
+        public async Task<IActionResult> Create([FromBody] CreateSupplierDto dto)
         {
-            _db.Suppliers.Add(model);
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+            var entity = new Supplier
+            {
+                Name = dto.Name,
+                ContactEmail = dto.ContactEmail,
+                Phone = dto.Phone
+            };
+
+            _db.Suppliers.Add(entity);
             await _db.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetOne), new { id = model.Id }, model);
+
+            var created = new ReadSupplierDto
+            {
+                Id = entity.Id,
+                Name = entity.Name,
+                ContactEmail = entity.ContactEmail,
+                Phone = entity.Phone
+            };
+
+            return CreatedAtAction(nameof(GetOne), new { id = created.Id }, created);
         }
 
+        /// <summary>Update a supplier.</summary>
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update(int id, Supplier model)
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateSupplierDto dto)
         {
-            if (id != model.Id) return BadRequest("Mismatched id.");
-            if (!await _db.Suppliers.AnyAsync(x => x.Id == id)) return NotFound();
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-            _db.Entry(model).State = EntityState.Modified;
+            var entity = await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == id);
+            if (entity is null) return NotFound();
+
+            entity.Name = dto.Name;
+            entity.ContactEmail = dto.ContactEmail;
+            entity.Phone = dto.Phone;
+
             await _db.SaveChangesAsync();
             return NoContent();
         }
 
+        /// <summary>Delete a supplier.</summary>
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var s = await _db.Suppliers.FindAsync(id);
-            if (s is null) return NotFound();
+            var entity = await _db.Suppliers.FindAsync(id);
+            if (entity is null) return NotFound();
 
-            _db.Suppliers.Remove(s);
+            // Optional: prevent delete if referenced by Deliveries/Items (if desired)
+            _db.Suppliers.Remove(entity);
             await _db.SaveChangesAsync();
             return NoContent();
         }
