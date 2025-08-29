@@ -6,27 +6,32 @@ namespace PwCStationeryAPI.Models
     {
         public int Id { get; set; }
 
-        // Which product this delivery relates to (free text to match your UI; you can later link to ItemId)
         [MaxLength(150)]
         public required string Product { get; set; }
 
-        // Supplier linkage is explicit to support historical delivery metrics by supplier
         public int? SupplierId { get; set; }
         public Supplier? Supplier { get; set; }
 
-        // Office receiving the delivery (denormalized text to keep it simple for first pass)
         [MaxLength(120)]
         public required string Office { get; set; }
 
-        public DateTime ScheduledDateUtc { get; set; }
-        public DateTime? ArrivalDateUtc { get; set; }
+        // The date the order was placed
+        public DateTime OrderedDateUtc { get; set; }
 
-        // "On Time" | "Pending" | "Delayed"
+        public DateTime? ExpectedArrivalDateUtc { get; set; }
+
+        public DateTime? ActualArrivalDateUtc { get; set; }
+
         [MaxLength(30)]
-        public required string Status { get; set; }
+        public required string Status { get; set; } // Pending | On Time | Delayed | Received | Cancelled
 
-        // Convenience: computed delay (in days) once arrived
-        public int? ArrivalDelayDays =>
-            ArrivalDateUtc.HasValue ? (int?)(ArrivalDateUtc.Value.Date - ScheduledDateUtc.Date).TotalDays : null;
+        // Frozen delay after Received (Actual - Expected, in days)
+        public int? FinalDelayDays { get; set; }
+
+        // Convenience (live) if not frozen
+        public int? ComputedDelayDays =>
+            (ActualArrivalDateUtc.HasValue && ExpectedArrivalDateUtc.HasValue)
+                ? (int?)(ActualArrivalDateUtc.Value.Date - ExpectedArrivalDateUtc.Value.Date).TotalDays
+                : null;
     }
 }

@@ -1,8 +1,10 @@
-﻿// backend/PwCStationeryAPI/Controllers/DeliveriesController.cs
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PwCStationeryAPI.Data;
+using PwCStationeryAPI.Dtos.Deliveries;
 using PwCStationeryAPI.Models;
+using Microsoft.AspNetCore.Authorization;
+
 
 namespace PwCStationeryAPI.Controllers
 {
@@ -13,143 +15,209 @@ namespace PwCStationeryAPI.Controllers
         private readonly ApplicationDbContext _db;
         public DeliveriesController(ApplicationDbContext db) => _db = db;
 
-        /// <summary>
-        /// Get deliveries with optional filters: supplierId, office, status, from (yyyy-MM-dd), to (yyyy-MM-dd)
-        /// </summary>
+        [Authorize]
         [HttpGet]
-        public async Task<IActionResult> GetAll(
-            [FromQuery] int? supplierId = null,
-            [FromQuery] string? office = null,
+        public async Task<ActionResult<IEnumerable<ReadDeliveryDto>>> GetAll(
             [FromQuery] string? status = null,
-            [FromQuery] DateTime? from = null,
-            [FromQuery] DateTime? to = null)
+            [FromQuery] string? office = null,
+            [FromQuery] string? product = null)
         {
-            var q = _db.Deliveries
+            var q = _db.Deliveries.AsNoTracking()
                 .Include(d => d.Supplier)
                 .AsQueryable();
 
-            if (supplierId.HasValue) q = q.Where(d => d.SupplierId == supplierId.Value);
-            if (!string.IsNullOrWhiteSpace(office)) q = q.Where(d => d.Office == office);
             if (!string.IsNullOrWhiteSpace(status)) q = q.Where(d => d.Status == status);
-            if (from.HasValue) q = q.Where(d => d.ScheduledDateUtc >= from.Value);
-            if (to.HasValue) q = q.Where(d => d.ScheduledDateUtc <= to.Value);
+            if (!string.IsNullOrWhiteSpace(office)) q = q.Where(d => d.Office == office);
+            if (!string.IsNullOrWhiteSpace(product)) q = q.Where(d => d.Product == product);
 
-            var data = await q
-                .OrderByDescending(d => d.ScheduledDateUtc)
+            var list = await q
+                .OrderBy(d => d.OrderedDateUtc)
+                .Select(d => new ReadDeliveryDto
+                {
+                    Id = d.Id,
+                    Product = d.Product,
+                    Office = d.Office,
+                    SupplierId = d.SupplierId,
+                    SupplierName = d.Supplier != null ? d.Supplier.Name : null,
+
+                    OrderedDateUtc = d.OrderedDateUtc,
+                    ExpectedArrivalDateUtc = d.ExpectedArrivalDateUtc,
+                    ActualArrivalDateUtc = d.ActualArrivalDateUtc,
+
+                    ArrivalDelayDays = d.FinalDelayDays ?? d.ComputedDelayDays,
+                    Status = d.Status
+                })
                 .ToListAsync();
 
-            return Ok(data);
+            return Ok(list);
         }
 
-        /// <summary>
-        /// Get one delivery
-        /// </summary>
+        [Authorize]
         [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetOne(int id)
+        public async Task<ActionResult<ReadDeliveryDto>> GetOne(int id)
         {
-            var d = await _db.Deliveries
-                .Include(x => x.Supplier)
-                .FirstOrDefaultAsync(x => x.Id == id);
+            var dto = await _db.Deliveries.AsNoTracking()
+                .Include(d => d.Supplier)
+                .Where(d => d.Id == id)
+                .Select(d => new ReadDeliveryDto
+                {
+                    Id = d.Id,
+                    Product = d.Product,
+                    Office = d.Office,
+                    SupplierId = d.SupplierId,
+                    SupplierName = d.Supplier != null ? d.Supplier.Name : null,
 
-            return d is null ? NotFound() : Ok(d);
+                    OrderedDateUtc = d.OrderedDateUtc,
+                    ExpectedArrivalDateUtc = d.ExpectedArrivalDateUtc,
+                    ActualArrivalDateUtc = d.ActualArrivalDateUtc,
+
+                    ArrivalDelayDays = d.FinalDelayDays ?? d.ComputedDelayDays,
+                    Status = d.Status
+                })
+                .FirstOrDefaultAsync();
+
+            return dto is null ? NotFound() : Ok(dto);
         }
 
-        /// <summary>
-        /// Create a delivery (Status defaults to Pending if not provided)
-        /// </summary>
+        [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost]
-        public async Task<IActionResult> Create(Delivery model)
+        public async Task<IActionResult> Create([FromBody] CreateDeliveryDto dto)
         {
-            if (string.IsNullOrWhiteSpace(model.Status))
-                model.Status = "Pending";
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-            // Normalize dates: store as UTC (assuming input without timezone is local)
-            model.ScheduledDateUtc = DateTime.SpecifyKind(model.ScheduledDateUtc, DateTimeKind.Utc);
-            if (model.ArrivalDateUtc.HasValue)
-                model.ArrivalDateUtc = DateTime.SpecifyKind(model.ArrivalDateUtc.Value, DateTimeKind.Utc);
+            var status = string.IsNullOrWhiteSpace(dto.Status) ? "Pending" : dto.Status;
 
-            // If arrival provided on creation, set status if not set
-            if (model.ArrivalDateUtc.HasValue && string.IsNullOrWhiteSpace(model.Status))
-                model.Status = "On Time";
+            // Validation
+            if (dto.SupplierId.HasValue && !await _db.Suppliers.AnyAsync(s => s.Id == dto.SupplierId.Value))
+                return BadRequest($"SupplierId {dto.SupplierId} does not exist.");
 
-            _db.Deliveries.Add(model);
+            if (dto.ExpectedArrivalDateUtc < dto.OrderedDateUtc)
+                return BadRequest("Expected arrival cannot be before the order date.");
+
+            if (dto.ActualArrivalDateUtc.HasValue && status != "Received")
+                return BadRequest("ActualArrivalDateUtc can only be set when status is 'Received'.");
+
+            if (status == "Received" && !dto.ActualArrivalDateUtc.HasValue)
+                return BadRequest("When status is 'Received', ActualArrivalDateUtc is required.");
+
+            if (dto.ActualArrivalDateUtc.HasValue && dto.ActualArrivalDateUtc.Value.Date < dto.ExpectedArrivalDateUtc.Date)
+                return BadRequest("Actual arrival cannot be before expected arrival.");
+
+            var entity = new Delivery
+            {
+                Product = dto.Product,
+                Office = dto.Office,
+                SupplierId = dto.SupplierId,
+
+                OrderedDateUtc = dto.OrderedDateUtc,
+                ExpectedArrivalDateUtc = dto.ExpectedArrivalDateUtc,
+                ActualArrivalDateUtc = dto.ActualArrivalDateUtc,
+
+                Status = status
+            };
+
+            // Freeze delay if already Received with actual
+            if (status == "Received" && entity.ExpectedArrivalDateUtc.HasValue && entity.ActualArrivalDateUtc.HasValue)
+                entity.FinalDelayDays = (int)(entity.ActualArrivalDateUtc.Value.Date - entity.ExpectedArrivalDateUtc.Value.Date).TotalDays;
+
+            _db.Deliveries.Add(entity);
             await _db.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetOne), new { id = model.Id }, model);
+            return CreatedAtAction(nameof(GetOne), new { id = entity.Id }, new { id = entity.Id });
         }
 
-        /// <summary>
-        /// Update a delivery (use to edit product/office/dates/supplier/status)
-        /// </summary>
+        [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update(int id, Delivery model)
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateDeliveryDto dto)
         {
-            if (id != model.Id) return BadRequest("Mismatched id.");
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-            var existing = await _db.Deliveries.FindAsync(id);
-            if (existing is null) return NotFound();
+            var entity = await _db.Deliveries.FirstOrDefaultAsync(d => d.Id == id);
+            if (entity is null) return NotFound();
 
-            existing.Product = model.Product;
-            existing.SupplierId = model.SupplierId;
-            existing.Office = model.Office;
-            existing.ScheduledDateUtc = DateTime.SpecifyKind(model.ScheduledDateUtc, DateTimeKind.Utc);
-            existing.ArrivalDateUtc = model.ArrivalDateUtc.HasValue
-                ? DateTime.SpecifyKind(model.ArrivalDateUtc.Value, DateTimeKind.Utc)
-                : null;
-            existing.Status = model.Status;
+            var newStatus = dto.Status;
+
+            if (dto.SupplierId.HasValue)
+            {
+                if (!await _db.Suppliers.AnyAsync(s => s.Id == dto.SupplierId.Value))
+                    return BadRequest($"SupplierId {dto.SupplierId} does not exist.");
+                entity.SupplierId = dto.SupplierId;
+            }
+
+            if (dto.OrderedDateUtc.HasValue)
+                entity.OrderedDateUtc = dto.OrderedDateUtc.Value;
+
+            if (dto.ExpectedArrivalDateUtc.HasValue)
+            {
+                if (dto.ExpectedArrivalDateUtc.Value.Date < entity.OrderedDateUtc.Date)
+                    return BadRequest("Expected arrival cannot be before the order date.");
+                entity.ExpectedArrivalDateUtc = dto.ExpectedArrivalDateUtc.Value;
+            }
+
+            // Actual allowed only with Received
+            if (dto.ActualArrivalDateUtc.HasValue && newStatus != "Received")
+                return BadRequest("ActualArrivalDateUtc can only be set when status is 'Received'.");
+
+            if (newStatus == "Received" && !dto.ActualArrivalDateUtc.HasValue && !entity.ActualArrivalDateUtc.HasValue)
+                return BadRequest("When status is 'Received', ActualArrivalDateUtc is required.");
+
+            if (dto.ActualArrivalDateUtc.HasValue && entity.ExpectedArrivalDateUtc.HasValue &&
+                dto.ActualArrivalDateUtc.Value.Date < entity.ExpectedArrivalDateUtc.Value.Date)
+                return BadRequest("Actual arrival cannot be before expected arrival.");
+
+            if (dto.ActualArrivalDateUtc.HasValue)
+                entity.ActualArrivalDateUtc = dto.ActualArrivalDateUtc.Value;
+
+            // Freeze delay when becoming Received or when actual changes under Received
+            var becameReceived = entity.Status != "Received" && newStatus == "Received";
+            var actualChangedWhileReceived = newStatus == "Received" && dto.ActualArrivalDateUtc.HasValue;
+
+            if ((becameReceived || actualChangedWhileReceived) &&
+                entity.ExpectedArrivalDateUtc.HasValue && entity.ActualArrivalDateUtc.HasValue)
+            {
+                entity.FinalDelayDays = (int)(entity.ActualArrivalDateUtc.Value.Date - entity.ExpectedArrivalDateUtc.Value.Date).TotalDays;
+            }
+
+            entity.Status = newStatus;
 
             await _db.SaveChangesAsync();
             return NoContent();
         }
 
-        /// <summary>
-        /// Mark a delivery as arrived now; status auto-calculated (On Time/Delayed)
-        /// </summary>
-        [HttpPost("{id:int}/arrive")]
-        public async Task<IActionResult> MarkArrived(int id)
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        [HttpPost("{id:int}/status")]
+        public async Task<IActionResult> SetStatus(int id, [FromBody] UpdateDeliveryStatusDto dto)
         {
-            var d = await _db.Deliveries.FindAsync(id);
-            if (d is null) return NotFound();
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-            d.ArrivalDateUtc = DateTime.UtcNow;
-            d.Status = (d.ArrivalDateUtc.Value.Date <= d.ScheduledDateUtc.Date) ? "On Time" : "Delayed";
+            var entity = await _db.Deliveries.FirstOrDefaultAsync(d => d.Id == id);
+            if (entity is null) return NotFound();
 
+            if (dto.Status == "Received")
+            {
+                if (!entity.ActualArrivalDateUtc.HasValue)
+                    return BadRequest("When status is 'Received', ActualArrivalDateUtc must be supplied via PUT.");
+                if (entity.ExpectedArrivalDateUtc.HasValue && entity.FinalDelayDays == null)
+                {
+                    entity.FinalDelayDays = (int)(entity.ActualArrivalDateUtc.Value.Date - entity.ExpectedArrivalDateUtc.Value.Date).TotalDays;
+                }
+            }
+
+            entity.Status = dto.Status;
             await _db.SaveChangesAsync();
-            return Ok(d);
+            return Ok(new { id = entity.Id, status = entity.Status });
         }
 
-        /// <summary>
-        /// Delete a delivery
-        /// </summary>
+        [Authorize(Roles = "SuperAdmin")]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var d = await _db.Deliveries.FindAsync(id);
-            if (d is null) return NotFound();
+            var entity = await _db.Deliveries.FindAsync(id);
+            if (entity is null) return NotFound();
 
-            _db.Deliveries.Remove(d);
+            _db.Deliveries.Remove(entity);
             await _db.SaveChangesAsync();
             return NoContent();
-        }
-
-        /// <summary>
-        /// Supplier performance: average arrival delay days (negative/zero = on-time/early)
-        /// </summary>
-        [HttpGet("metrics/supplier/{supplierId:int}")]
-        public async Task<IActionResult> SupplierMetrics(int supplierId, [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
-        {
-            var q = _db.Deliveries
-                .Where(d => d.SupplierId == supplierId && d.ArrivalDateUtc != null);
-
-            if (from.HasValue) q = q.Where(d => d.ScheduledDateUtc >= from.Value);
-            if (to.HasValue) q = q.Where(d => d.ScheduledDateUtc <= to.Value);
-
-            var list = await q.ToListAsync();
-            if (list.Count == 0)
-                return Ok(new { supplierId, count = 0, avgDelayDays = (double?)null });
-
-            var avg = list.Average(d => (d.ArrivalDateUtc!.Value.Date - d.ScheduledDateUtc.Date).TotalDays);
-            return Ok(new { supplierId, count = list.Count, avgDelayDays = Math.Round(avg, 2) });
         }
     }
 }

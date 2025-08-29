@@ -1,5 +1,4 @@
 ﻿using PwCStationeryAPI.Models;
-using Microsoft.EntityFrameworkCore;
 
 namespace PwCStationeryAPI.Data
 {
@@ -7,8 +6,7 @@ namespace PwCStationeryAPI.Data
     {
         public static void Initialize(ApplicationDbContext context)
         {
-            // Ensure DB exists
-            context.Database.EnsureCreated();
+            // NOTE: Program.cs calls db.Database.Migrate(); do NOT call EnsureCreated() here.
 
             // 1) Categories
             EnsureCategory(context, "Core");
@@ -59,36 +57,57 @@ namespace PwCStationeryAPI.Data
             EnsureStock(context, itemNB.Id, offManchester.Id, quantity: 35, reorderThreshold: 10);
             context.SaveChanges();
 
-            // 6) Deliveries (UTC + SupplierId)
+            // 6) Deliveries  (NEW field names & semantics)
+            // Scheduled = OrderedDateUtc, Arrival = ExpectedArrivalDateUtc. Actual set only when Received.
+
+            // Example: On Time (no actual yet)
             EnsureDelivery(
                 context,
                 product: "Printer Paper A4",
                 supplierId: supDepot.Id,
                 office: "London",
-                scheduledUtc: new DateTime(2025, 8, 5, 0, 0, 0, DateTimeKind.Utc),
-                arrivalUtc: new DateTime(2025, 8, 4, 0, 0, 0, DateTimeKind.Utc),
-                status: "On Time"
+                orderedUtc: new DateTime(2025, 8, 4, 0, 0, 0, DateTimeKind.Utc),
+                expectedUtc: new DateTime(2025, 8, 5, 0, 0, 0, DateTimeKind.Utc),
+                status: "On Time",
+                actualUtc: null
             );
 
+            // Example: Pending (no actual yet)
             EnsureDelivery(
                 context,
                 product: "Pens - Black",
                 supplierId: supStaples.Id,
                 office: "Manchester",
-                scheduledUtc: new DateTime(2025, 8, 6, 0, 0, 0, DateTimeKind.Utc),
-                arrivalUtc: null,
-                status: "Pending"
+                orderedUtc: new DateTime(2025, 8, 5, 0, 0, 0, DateTimeKind.Utc),
+                expectedUtc: new DateTime(2025, 8, 6, 0, 0, 0, DateTimeKind.Utc),
+                status: "Pending",
+                actualUtc: null
             );
 
+            // Example: Delayed (no actual yet)
             EnsureDelivery(
                 context,
                 product: "Notebooks",
                 supplierId: supRyman.Id,
                 office: "Birmingham",
-                scheduledUtc: new DateTime(2025, 8, 3, 0, 0, 0, DateTimeKind.Utc),
-                arrivalUtc: new DateTime(2025, 8, 5, 0, 0, 0, DateTimeKind.Utc),
-                status: "Delayed"
+                orderedUtc: new DateTime(2025, 8, 3, 0, 0, 0, DateTimeKind.Utc),
+                expectedUtc: new DateTime(2025, 8, 5, 0, 0, 0, DateTimeKind.Utc),
+                status: "Delayed",
+                actualUtc: null
             );
+
+            // Example: Received (freeze delay = Actual − Expected)
+            EnsureDelivery(
+                context,
+                product: "Stapled Pads",
+                supplierId: supRyman.Id,
+                office: "London",
+                orderedUtc: new DateTime(2025, 8, 1, 0, 0, 0, DateTimeKind.Utc),
+                expectedUtc: new DateTime(2025, 8, 3, 0, 0, 0, DateTimeKind.Utc),
+                status: "Received",
+                actualUtc: new DateTime(2025, 8, 4, 0, 0, 0, DateTimeKind.Utc) // +1 day delay
+            );
+
             context.SaveChanges();
 
             // 7) Requests
@@ -163,37 +182,63 @@ namespace PwCStationeryAPI.Data
             }
             else
             {
-                // keep values in sync on reseed
                 existing.Quantity = quantity;
                 existing.ReorderThreshold = reorderThreshold;
             }
         }
 
-        private static void EnsureDelivery(ApplicationDbContext db, string product, int supplierId, string office, DateTime scheduledUtc, DateTime? arrivalUtc, string status)
+        // NEW signature: order + expected (+ optional actual)
+        private static void EnsureDelivery(
+            ApplicationDbContext db,
+            string product,
+            int supplierId,
+            string office,
+            DateTime orderedUtc,
+            DateTime expectedUtc,
+            string status,
+            DateTime? actualUtc = null)
         {
             var existing = db.Deliveries.FirstOrDefault(d =>
                 d.Product == product &&
                 d.SupplierId == supplierId &&
                 d.Office == office &&
-                d.ScheduledDateUtc == scheduledUtc
+                d.OrderedDateUtc == orderedUtc
             );
 
             if (existing == null)
             {
-                db.Deliveries.Add(new Delivery
+                var entity = new Delivery
                 {
                     Product = product,
                     SupplierId = supplierId,
                     Office = office,
-                    ScheduledDateUtc = scheduledUtc,
-                    ArrivalDateUtc = arrivalUtc,
+                    OrderedDateUtc = orderedUtc,
+                    ExpectedArrivalDateUtc = expectedUtc,
+                    ActualArrivalDateUtc = actualUtc,
                     Status = status
-                });
+                };
+
+                // If seeding as Received with an actual date, freeze the delay now
+                if (status == "Received" && entity.ExpectedArrivalDateUtc.HasValue && entity.ActualArrivalDateUtc.HasValue)
+                {
+                    entity.FinalDelayDays = (int)(entity.ActualArrivalDateUtc.Value.Date - entity.ExpectedArrivalDateUtc.Value.Date).TotalDays;
+                }
+
+                db.Deliveries.Add(entity);
             }
             else
             {
-                existing.ArrivalDateUtc = arrivalUtc;
+                // Keep idempotent: update fields to the provided values
+                existing.ExpectedArrivalDateUtc = expectedUtc;
                 existing.Status = status;
+
+                if (actualUtc.HasValue)
+                    existing.ActualArrivalDateUtc = actualUtc.Value;
+
+                if (existing.Status == "Received" && existing.ExpectedArrivalDateUtc.HasValue && existing.ActualArrivalDateUtc.HasValue)
+                {
+                    existing.FinalDelayDays = (int)(existing.ActualArrivalDateUtc.Value.Date - existing.ExpectedArrivalDateUtc.Value.Date).TotalDays;
+                }
             }
         }
 

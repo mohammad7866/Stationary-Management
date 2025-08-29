@@ -2,6 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using PwCStationeryAPI.Data;
 using PwCStationeryAPI.Models;
+using Microsoft.AspNetCore.Authorization;
+
 
 namespace PwCStationeryAPI.Controllers
 {
@@ -12,10 +14,12 @@ namespace PwCStationeryAPI.Controllers
         private readonly ApplicationDbContext _db;
         public CategoriesController(ApplicationDbContext db) => _db = db;
 
+        [Authorize]
         [HttpGet]
         public async Task<IActionResult> GetAll() =>
             Ok(await _db.Categories.OrderBy(c => c.Name).ToListAsync());
 
+        [Authorize]
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetOne(int id)
         {
@@ -23,6 +27,7 @@ namespace PwCStationeryAPI.Controllers
             return c is null ? NotFound() : Ok(c);
         }
 
+        [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost]
         public async Task<IActionResult> Create(Category model)
         {
@@ -31,6 +36,7 @@ namespace PwCStationeryAPI.Controllers
             return CreatedAtAction(nameof(GetOne), new { id = model.Id }, model);
         }
 
+        [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, Category model)
         {
@@ -42,6 +48,7 @@ namespace PwCStationeryAPI.Controllers
             return NoContent();
         }
 
+        [Authorize(Roles = "SuperAdmin")]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

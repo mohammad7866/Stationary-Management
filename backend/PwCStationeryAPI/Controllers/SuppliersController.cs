@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PwCStationeryAPI.Data;
 using PwCStationeryAPI.Dtos.Suppliers;
 using PwCStationeryAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PwCStationeryAPI.Controllers
 {
@@ -20,6 +21,7 @@ namespace PwCStationeryAPI.Controllers
         /// <param name="q">Search in name, email, phone (case-insensitive)</param>
         /// <param name="page">1-based page number</param>
         /// <param name="pageSize">Items per page (max 100)</param>
+        [Authorize]
         [HttpGet]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? q = null,
@@ -58,7 +60,7 @@ namespace PwCStationeryAPI.Controllers
             return Ok(new { total, page, pageSize, data });
         }
 
-        /// <summary>Get a supplier by id.</summary>
+        [Authorize]
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetOne(int id)
         {
@@ -77,7 +79,7 @@ namespace PwCStationeryAPI.Controllers
             return dto is null ? NotFound() : Ok(dto);
         }
 
-        /// <summary>Create a supplier.</summary>
+        [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateSupplierDto dto)
         {
@@ -104,7 +106,7 @@ namespace PwCStationeryAPI.Controllers
             return CreatedAtAction(nameof(GetOne), new { id = created.Id }, created);
         }
 
-        /// <summary>Update a supplier.</summary>
+        [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateSupplierDto dto)
         {
@@ -121,7 +123,7 @@ namespace PwCStationeryAPI.Controllers
             return NoContent();
         }
 
-        /// <summary>Delete a supplier.</summary>
+        [Authorize(Roles = "SuperAdmin")]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

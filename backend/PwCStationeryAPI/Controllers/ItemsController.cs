@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PwCStationeryAPI.Data;
 using PwCStationeryAPI.Models;
 using PwCStationeryAPI.Dtos.Items; // <- add this (see note below)
+using Microsoft.AspNetCore.Authorization;
 
 namespace PwCStationeryAPI.Controllers
 {
@@ -21,6 +22,7 @@ namespace PwCStationeryAPI.Controllers
         /// <param name="categoryType">Exact Category.Name match</param>
         /// <param name="page">1-based page number</param>
         /// <param name="pageSize">Items per page (max 100)</param>
+        [Authorize]
         [HttpGet]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? q = null,
@@ -59,7 +61,7 @@ namespace PwCStationeryAPI.Controllers
             return Ok(new { total, page, pageSize, data });
         }
 
-        /// <summary>Get a single item by id (includes Category and Supplier).</summary>
+        [Authorize]
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetOne(int id)
         {
@@ -72,7 +74,7 @@ namespace PwCStationeryAPI.Controllers
             return item is null ? NotFound() : Ok(item);
         }
 
-        /// <summary>Create a new item.</summary>
+        [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateItemDto dto)
         {
@@ -110,7 +112,7 @@ namespace PwCStationeryAPI.Controllers
             return CreatedAtAction(nameof(GetOne), new { id = created.Id }, created);
         }
 
-        /// <summary>Update an existing item.</summary>
+        [Authorize(Roles = "Admin,SuperAdmin")]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateItemDto dto)
         {
@@ -138,7 +140,7 @@ namespace PwCStationeryAPI.Controllers
             return NoContent();
         }
 
-        /// <summary>Delete an item.</summary>
+        [Authorize(Roles = "SuperAdmin")]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
