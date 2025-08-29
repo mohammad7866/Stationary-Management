@@ -1,3 +1,4 @@
+// backend/PwCStationeryAPI/Data/DesignTimeDbContextFactory.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
@@ -9,17 +10,25 @@ namespace PwCStationeryAPI.Data
     {
         public ApplicationDbContext CreateDbContext(string[] args)
         {
-            var configuration = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+            // Support both dotnet-ef working dirs and env-specific configs
+            var basePath = Directory.GetCurrentDirectory();
+            var env = System.Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
+
+            var config = new ConfigurationBuilder()
+                .SetBasePath(basePath)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+                .AddJsonFile($"appsettings.{env}.json", optional: true, reloadOnChange: false)
+                .AddEnvironmentVariables()
                 .Build();
 
-            var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
-            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            var conn = config.GetConnectionString("DefaultConnection")
+                       ?? "Data Source=stationery.db"; // sensible fallback
 
-            optionsBuilder.UseSqlite(connectionString);
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseSqlite(conn)
+                .Options;
 
-            return new ApplicationDbContext(optionsBuilder.Options);
+            return new ApplicationDbContext(options);
         }
     }
 }

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PwCStationeryAPI.Data;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PwCStationeryAPI.Controllers
 {
