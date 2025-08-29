@@ -3,17 +3,18 @@ const BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 function toQuery(obj) {
   if (!obj) return "";
-  const params = new URLSearchParams();
+  const p = new URLSearchParams();
   for (const [k, v] of Object.entries(obj)) {
     if (v === null || v === undefined || v === "") continue;
-    params.append(k, String(v));
+    p.append(k, String(v));
   }
-  const q = params.toString();
+  const q = p.toString();
   return q ? `?${q}` : "";
 }
 
 function http(path, opts = {}) {
-  const token = localStorage.getItem("jwt") || "";
+  // Align with AuthContext: use the "token" key
+  const token = localStorage.getItem("token") || "";
   const headers = {
     "Content-Type": "application/json",
     ...(opts.headers || {}),
@@ -21,15 +22,16 @@ function http(path, opts = {}) {
   };
   return fetch(`${BASE}${path}`, { ...opts, headers }).then(async (r) => {
     const text = await r.text();
-    const data = text ? JSON.parse(text) : null;
+    const data = text ? (() => { try { return JSON.parse(text); } catch { return text; } })() : null;
     if (!r.ok) {
       const msg =
-        data?.title ||
-        data?.error ||
-        data?.message ||
+        (data && (data.title || data.error || data.message)) ||
         text ||
         `HTTP ${r.status}`;
-      throw new Error(msg);
+      const err = new Error(msg);
+      err.status = r.status;
+      err.body = data;
+      throw err;
     }
     return data;
   });
@@ -39,9 +41,10 @@ function http(path, opts = {}) {
 export const Auth = {
   login: (body) => http(`/api/Auth/login`, { method: "POST", body: JSON.stringify(body) }),
   me: (token) =>
-    fetch(`${BASE}/api/Auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((r) => r.json()),
+  fetch(`${BASE}/api/Auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((r) => r.json()),
+
 };
 
 /* ===== Items ===== */
@@ -71,7 +74,7 @@ export const Offices = {
   remove: (id) => http(`/api/Offices/${id}`, { method: "DELETE" }),
 };
 
-/* ===== Categories (if you expose them) ===== */
+/* ===== Categories ===== */
 export const Categories = {
   list: (p) => http(`/api/Categories${toQuery(p)}`),
   get: (id) => http(`/api/Categories/${id}`),
@@ -111,3 +114,6 @@ export const Requests = {
   reject: (id) => http(`/api/Requests/${id}/reject`, { method: "POST" }),
   remove: (id) => http(`/api/Requests/${id}`, { method: "DELETE" }),
 };
+
+/* ===== named utils (and http) ===== */
+export { http, toQuery, BASE };

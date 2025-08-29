@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Suppliers } from "../lib/api";
 
-export function SuppliersPage() {
+export default function SuppliersPage() {
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);

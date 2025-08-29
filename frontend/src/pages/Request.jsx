@@ -3,16 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Requests, Items, Offices } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 
-// yyyy-mm-dd
-function fmtIsoDate(iso) {
-  if (!iso) return "";
-  if (String(iso).startsWith("0001-")) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
-}
-
-// yyyy-mm-dd HH:mm (local)
+// yyyy-mm-dd HH:mm
 function fmtIsoDateTime(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -124,7 +115,7 @@ export default function RequestsPage() {
   async function onApprove(id) {
     setBusyId(id); setStatusMsg(""); setErrorMsg("");
     try {
-      await Requests.approve(id);
+      await Requests.approve(id); // or: await Requests.setStatus(id, { status: "Approved" });
       await load();
       setStatusMsg("Request approved.");
     } catch (e) { setErrorMsg(e.message); }
@@ -134,7 +125,7 @@ export default function RequestsPage() {
   async function onReject(id) {
     setBusyId(id); setStatusMsg(""); setErrorMsg("");
     try {
-      await Requests.reject(id);
+      await Requests.reject(id); // or: await Requests.setStatus(id, { status: "Rejected" });
       await load();
       setStatusMsg("Request rejected.");
     } catch (e) { setErrorMsg(e.message); }

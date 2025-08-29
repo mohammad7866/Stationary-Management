@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Deliveries, Items, Offices, Suppliers } from "../lib/api";
 
-// yyyy-mm-dd from ISO string
+// yyyy-mm-dd from ISO
 function fmtIsoDate(iso) {
   if (!iso) return "";
   if (String(iso).startsWith("0001-")) return "";
@@ -11,7 +11,7 @@ function fmtIsoDate(iso) {
   return d.toISOString().slice(0, 10);
 }
 
-// UTC midnight ISO from yyyy-mm-dd (avoids TZ shifts)
+// UTC midnight ISO from yyyy-mm-dd
 function toUtcMidnightIso(dateStr) {
   if (!dateStr) return null;
   return new Date(`${dateStr}T00:00:00Z`).toISOString();
@@ -19,14 +19,8 @@ function toUtcMidnightIso(dateStr) {
 
 const isNeg = (v) => typeof v === "number" && v < 0;
 
-// For overdue highlight (compare strings in yyyy-mm-dd)
+// Overdue = expected date past and not received/cancelled
 const todayYmd = new Date().toISOString().slice(0, 10);
-/**
- * Overdue = past the expected arrival date AND not received/cancelled.
- * In our UI mapping:
- *  - "scheduled" column = order date  (orderedDateUtc)
- *  - "arrival"   column = expected date (expectedArrivalDateUtc)
- */
 const isOverdueRow = (r) =>
   r.status !== "Received" &&
   r.status !== "Cancelled" &&
@@ -101,7 +95,6 @@ export default function DeliveriesPage() {
       if (!form.office) throw new Error("Office is required.");
       if (!orderedIso) throw new Error("Order date is required.");
       if (!expectedIso) throw new Error("Expected arrival date is required.");
-
       if (new Date(expectedIso) < new Date(orderedIso)) {
         throw new Error("Expected arrival cannot be before the order date.");
       }
