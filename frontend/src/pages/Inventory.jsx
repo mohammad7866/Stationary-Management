@@ -1,8 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Items, Categories, Offices, StockLevels, Suppliers } from "../lib/api";
+import RoleGate from "../auth/RoleGate";
+import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/permissions";
 
 export default function Inventory() {
-  const userRole = "admin";
+  const { roles = [] } = useAuth();
+  const showActionsCol = can(roles, "InventoryManage"); // show actions col if you can manage
 
   // data
   const [items, setItems] = useState([]);
@@ -44,7 +48,7 @@ export default function Inventory() {
       const catName = it?.categoryName ?? (it?.categoryId ? catById.get(it.categoryId) : null) ?? "Unknown";
       const officeName = sl.officeName ?? officeById.get(sl.officeId) ?? `Office ${sl.officeId}`;
       return {
-        id: sl.id,                  // stockLevel id
+        id: sl.id,
         itemId: sl.itemId,
         officeId: sl.officeId,
         key: `${sl.itemId}-${sl.officeId}`,
@@ -196,7 +200,6 @@ export default function Inventory() {
   async function deleteItemWithRows(itemId) {
     if (!confirm("Delete this item and all its stock rows?")) return;
     try {
-      // remove its stock rows first to avoid FK issues
       const rows = await StockLevels.list({ itemId });
       const list = Array.isArray(rows) ? rows : rows?.data ?? [];
       for (const r of list) {
@@ -210,6 +213,17 @@ export default function Inventory() {
       setErrorMsg(e.message);
     }
   }
+
+  const baseHeader = (
+    <>
+      <th style={thStyle}>Item</th>
+      <th style={thStyle}>Category</th>
+      <th style={thStyle}>Office</th>
+      <th style={thStyle}>Stock</th>
+      <th style={thStyle}>Reorder Threshold</th>
+    </>
+  );
+  const columnsCount = showActionsCol ? 6 : 5;
 
   return (
     <div style={container}>
@@ -238,12 +252,8 @@ export default function Inventory() {
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ background: "#f0f0f0" }}>
-            <th style={thStyle}>Item</th>
-            <th style={thStyle}>Category</th>
-            <th style={thStyle}>Office</th>
-            <th style={thStyle}>Stock</th>
-            <th style={thStyle}>Reorder Threshold</th>
-            {userRole !== "employee" && <th style={thStyle}>Actions</th>}
+            {baseHeader}
+            {showActionsCol && <th style={thStyle}>Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -260,9 +270,13 @@ export default function Inventory() {
                     <input type="number" value={editQty} onChange={(e) => setEditQty(e.target.value)} style={inputInline} />
                   ) : (
                     <>
-                      <button style={tinyBtn} onClick={() => adjustRow(row.id, -1)}>-</button>
+                      <RoleGate feature="InventoryManage">
+                        <button style={tinyBtn} onClick={() => adjustRow(row.id, -1)}>-</button>
+                      </RoleGate>
                       <span style={{ margin: "0 8px" }}>{row.stock}</span>
-                      <button style={tinyBtn} onClick={() => adjustRow(row.id, +1)}>+</button>
+                      <RoleGate feature="InventoryManage">
+                        <button style={tinyBtn} onClick={() => adjustRow(row.id, +1)}>+</button>
+                      </RoleGate>
                     </>
                   )}
                 </td>
@@ -273,7 +287,8 @@ export default function Inventory() {
                     row.reorderThreshold != null ? row.reorderThreshold : "-"
                   )}
                 </td>
-                {userRole !== "employee" && (
+
+                {showActionsCol && (
                   <td style={tdStyle}>
                     {isEditing ? (
                       <>
@@ -284,7 +299,11 @@ export default function Inventory() {
                       <>
                         <button style={button} onClick={() => startEdit(row)}>Edit</button>
                         <button style={secondaryButton} onClick={() => openItemModal(row)}>Edit Item</button>
-                        <button style={dangerButton} onClick={() => deleteRow(row.id)}>Delete</button>
+
+                        {/* Delete = SuperAdmin only */}
+                        <RoleGate feature="InventoryDelete">
+                          <button style={dangerButton} onClick={() => deleteRow(row.id)}>Delete</button>
+                        </RoleGate>
                       </>
                     )}
                   </td>
@@ -293,12 +312,13 @@ export default function Inventory() {
             );
           })}
           {rows.length === 0 && (
-            <tr><td style={tdStyle} colSpan={userRole !== "employee" ? 6 : 5}>No items</td></tr>
+            <tr><td style={tdStyle} colSpan={columnsCount}>No items</td></tr>
           )}
         </tbody>
       </table>
 
-      {userRole !== "employee" && (
+      {/* Add new item form — Admin/SuperAdmin */}
+      <RoleGate feature="InventoryManage">
         <form onSubmit={handleCreate} style={formStyle}>
           <h2>Add New Item</h2>
           <div style={formRow}>
@@ -323,43 +343,49 @@ export default function Inventory() {
           </div>
           <button style={button} type="submit">Add Item</button>
         </form>
-      )}
+      </RoleGate>
 
-      {/* Item Modal */}
+      {/* Item Modal — Admin/SuperAdmin */}
       {showItemModal && (
-        <div style={modalBackdrop} onClick={closeItemModal}>
-          <div style={modalBody} onClick={(e) => e.stopPropagation()}>
-            <h3>Edit Item</h3>
-            <div style={formRow}>
-              <label style={{ width: 120 }}>Name:</label>
-              <input value={editItemName} onChange={(e) => setEditItemName(e.target.value)} style={input} />
-            </div>
-            <div style={formRow}>
-              <label style={{ width: 120 }}>Category:</label>
-              <select value={editItemCategoryId} onChange={(e) => setEditItemCategoryId(e.target.value)} style={select}>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div style={formRow}>
-              <label style={{ width: 120 }}>Supplier:</label>
-              <select value={editItemSupplierId ?? ""} onChange={(e) => setEditItemSupplierId(e.target.value)} style={select}>
-                <option value="">None</option>
-                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <button style={button} onClick={saveItemModal}>Save Item</button>
-              <button style={secondaryButton} onClick={closeItemModal}>Close</button>
-              <button style={dangerButton} onClick={() => deleteItemWithRows(editItemId)}>Delete Item</button>
+        <RoleGate feature="InventoryManage">
+          <div style={modalBackdrop} onClick={closeItemModal}>
+            <div style={modalBody} onClick={(e) => e.stopPropagation()}>
+              <h3>Edit Item</h3>
+              <div style={formRow}>
+                <label style={{ width: 120 }}>Name:</label>
+                <input value={editItemName} onChange={(e) => setEditItemName(e.target.value)} style={input} />
+              </div>
+              <div style={formRow}>
+                <label style={{ width: 120 }}>Category:</label>
+                <select value={editItemCategoryId} onChange={(e) => setEditItemCategoryId(e.target.value)} style={select}>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div style={formRow}>
+                <label style={{ width: 120 }}>Supplier:</label>
+                <select value={editItemSupplierId ?? ""} onChange={(e) => setEditItemSupplierId(e.target.value)} style={select}>
+                  <option value="">None</option>
+                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button style={button} onClick={saveItemModal}>Save Item</button>
+                <button style={secondaryButton} onClick={closeItemModal}>Close</button>
+
+                {/* Delete Item = SuperAdmin only */}
+                <RoleGate feature="InventoryDelete">
+                  <button style={dangerButton} onClick={() => deleteItemWithRows(editItemId)}>Delete Item</button>
+                </RoleGate>
+              </div>
             </div>
           </div>
-        </div>
+        </RoleGate>
       )}
     </div>
   );
 }
 
-/* styles */
+/* styles (unchanged) */
 const container = { padding: "20px", maxWidth: "1000px", margin: "0 auto" };
 const title = { fontSize: "24px", fontWeight: "bold", marginBottom: "10px" };
 const filtersRow = { display: "flex", gap: "15px", margin: "15px 0" };

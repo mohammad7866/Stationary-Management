@@ -1,18 +1,10 @@
-// frontend/src/pages/Requests.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Requests, Items, Offices } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
+import RoleGate from "../auth/RoleGate";
+import { can } from "../auth/permissions";
 
-// yyyy-mm-dd
-function fmtIsoDate(iso) {
-  if (!iso) return "";
-  if (String(iso).startsWith("0001-")) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
-}
-
-// yyyy-mm-dd HH:mm (local)
+// yyyy-mm-dd HH:mm
 function fmtIsoDateTime(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -32,9 +24,8 @@ const statusColors = {
 };
 
 export default function RequestsPage() {
-  const { roles } = useAuth();
-  const canModerate = roles.includes("Admin") || roles.includes("SuperAdmin");
-  const canDelete = roles.includes("SuperAdmin");
+  const { roles = [] } = useAuth();
+  const showActionsCol = can(roles, "RequestsApprove") || can(roles, "RequestsDelete");
 
   const [list, setList] = useState([]);
   const [items, setItems] = useState([]);
@@ -152,6 +143,20 @@ export default function RequestsPage() {
     finally { setBusyId(null); }
   }
 
+  const baseHeader = (
+    <>
+      <th style={thStyle}>Item</th>
+      <th style={thStyle}>Office</th>
+      <th style={thStyle}>Qty</th>
+      <th style={thStyle}>Purpose</th>
+      <th style={thStyle}>Created</th>
+      <th style={thStyle}>Decision</th>
+      <th style={thStyle}>Status</th>
+    </>
+  );
+
+  const columnsCount = showActionsCol ? 8 : 7;
+
   return (
     <div style={container}>
       <h1 style={title}>Requests</h1>
@@ -189,14 +194,8 @@ export default function RequestsPage() {
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ background: "#f0f0f0" }}>
-            <th style={thStyle}>Item</th>
-            <th style={thStyle}>Office</th>
-            <th style={thStyle}>Qty</th>
-            <th style={thStyle}>Purpose</th>
-            <th style={thStyle}>Created</th>
-            <th style={thStyle}>Decision</th>
-            <th style={thStyle}>Status</th>
-            <th style={thStyle}>Actions</th>
+            {baseHeader}
+            {showActionsCol && <th style={thStyle}>Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -220,35 +219,44 @@ export default function RequestsPage() {
                     fontSize: 12
                   }}>{r.status}</span>
                 </td>
-                <td style={tdStyle}>
-                  {canModerate && r.status === "Pending" && (
-                    <>
+
+                {showActionsCol && (
+                  <td style={tdStyle}>
+                    {/* Approve/Reject (Admin/SuperAdmin) — only when Pending */}
+                    {r.status === "Pending" && (
+                      <RoleGate feature="RequestsApprove">
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            style={button}
+                            disabled={busyId === r.id}
+                            onClick={()=>onApprove(r.id)}
+                          >Approve</button>
+                          <button
+                            style={dangerButton}
+                            disabled={busyId === r.id}
+                            onClick={()=>onReject(r.id)}
+                          >Reject</button>
+                        </div>
+                      </RoleGate>
+                    )}
+
+                    {/* Delete (SuperAdmin) */}
+                    <RoleGate feature="RequestsDelete">
                       <button
-                        style={button}
+                        style={ghostButton}
                         disabled={busyId === r.id}
-                        onClick={()=>onApprove(r.id)}
-                      >Approve</button>
-                      <button
-                        style={dangerButton}
-                        disabled={busyId === r.id}
-                        onClick={()=>onReject(r.id)}
-                      >Reject</button>
-                    </>
-                  )}
-                  {canDelete && (
-                    <button
-                      style={ghostButton}
-                      disabled={busyId === r.id}
-                      onClick={()=>onDelete(r.id)}
-                      title="Delete (SuperAdmin)"
-                    >Delete</button>
-                  )}
-                </td>
+                        onClick={()=>onDelete(r.id)}
+                        title="Delete (SuperAdmin)"
+                      >Delete</button>
+                    </RoleGate>
+                  </td>
+                )}
               </tr>
             );
           })}
+
           {rows.length === 0 && (
-            <tr><td style={tdStyle} colSpan={8}>No requests</td></tr>
+            <tr><td style={tdStyle} colSpan={columnsCount}>No requests</td></tr>
           )}
         </tbody>
       </table>
@@ -334,7 +342,7 @@ const input = { padding: "8px", border: "1px solid #ccc", borderRadius: "4px", w
 const select = { padding: "8px", border: "1px solid #ccc", borderRadius: "4px" };
 const button = { padding: "8px 12px", background: "#007bff", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", marginRight: "8px" };
 const dangerButton = { ...button, background: "#dc3545" };
-const ghostButton = { ...button, background: "#6c757d" };
+const ghostButton  = { ...button, background: "#6c757d" };
 const successStyle = { color: "green", marginBottom: "10px" };
 const errorStyle = { color: "crimson", marginBottom: "10px" };
 const thStyle = { padding: "12px", borderBottom: "1px solid #ccc", textAlign: "left" };

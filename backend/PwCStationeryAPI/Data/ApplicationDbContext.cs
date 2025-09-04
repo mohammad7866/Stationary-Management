@@ -17,7 +17,6 @@ namespace PwCStationeryAPI.Data
         public DbSet<Request> Requests => Set<Request>();
         public DbSet<Delivery> Deliveries => Set<Delivery>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -95,15 +94,23 @@ namespace PwCStationeryAPI.Data
             // ---------- AuditLog ----------
             modelBuilder.Entity<AuditLog>(b =>
             {
-                b.Property(a => a.Action).HasMaxLength(80).IsRequired();
-                b.Property(a => a.Entity).HasMaxLength(80).IsRequired();
-                b.Property(a => a.EntityId).HasMaxLength(40);
-                b.Property(a => a.UserName).HasMaxLength(200);
-                b.Property(a => a.ClientIp).HasMaxLength(64);
-                b.Property(a => a.WhenUtc).IsRequired();
-                b.HasIndex(a => a.WhenUtc);
-                b.HasIndex(a => new { a.Entity, a.EntityId });
+                b.HasKey(a => a.Id);
+
+                b.Property(a => a.Method).HasMaxLength(16);
+                b.Property(a => a.Path).HasMaxLength(512);
+                b.Property(a => a.Controller).HasMaxLength(128);
+                b.Property(a => a.Action).HasMaxLength(128);
+                b.Property(a => a.UserId).HasMaxLength(128);
+                b.Property(a => a.UserName).HasMaxLength(256);
+                b.Property(a => a.RolesCsv).HasMaxLength(256);
+                b.Property(a => a.Ip).HasMaxLength(64);
+                b.Property(a => a.UserAgent).HasMaxLength(512);
+
+                b.HasIndex(a => a.TimestampUtc);
+                b.HasIndex(a => a.Path);
+                b.HasIndex(a => new { a.Method, a.StatusCode });
             });
+
         }
     }
 }
