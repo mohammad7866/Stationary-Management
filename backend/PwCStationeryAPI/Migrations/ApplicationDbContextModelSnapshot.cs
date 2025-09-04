@@ -211,13 +211,12 @@ namespace PwCStationeryAPI.Migrations
 
             modelBuilder.Entity("PwCStationeryAPI.Models.AuditLog", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(80)
+                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("AfterJson")
@@ -227,20 +226,61 @@ namespace PwCStationeryAPI.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ClientIp")
-                        .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Controller")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DurationMs")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Entity")
-                        .IsRequired()
-                        .HasMaxLength(80)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("EntityId")
-                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Ip")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("QueryString")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RolesCsv")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RouteValuesJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("TimestampUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("UserName")
-                        .HasMaxLength(200)
+                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("WhenUtc")
@@ -248,9 +288,11 @@ namespace PwCStationeryAPI.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("WhenUtc");
+                    b.HasIndex("Path");
 
-                    b.HasIndex("Entity", "EntityId");
+                    b.HasIndex("TimestampUtc");
+
+                    b.HasIndex("Method", "StatusCode");
 
                     b.ToTable("AuditLogs");
                 });

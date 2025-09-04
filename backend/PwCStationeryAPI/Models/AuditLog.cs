@@ -1,29 +1,38 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿// backend/PwCStationeryAPI/Models/AuditLog.cs
+using System;
 
 namespace PwCStationeryAPI.Models
 {
     public class AuditLog
     {
-        public int Id { get; set; }
+        public long Id { get; set; }
 
-        [MaxLength(80)]
-        public string Action { get; set; } = string.Empty; // e.g. "Request.Approve", "StockLevel.Update"
+        // Timestamps
+        public DateTime TimestampUtc { get; set; } = DateTime.UtcNow; // for request logs
+        public DateTime WhenUtc { get; set; } = DateTime.UtcNow;      // for your service logs
 
-        [MaxLength(80)]
-        public string Entity { get; set; } = string.Empty; // e.g. "Request", "StockLevel"
+        // Caller
+        public string? UserId { get; set; }
+        public string? UserName { get; set; }
+        public string? RolesCsv { get; set; }
 
-        [MaxLength(40)]
-        public string? EntityId { get; set; }
+        // Request metadata (from the global action filter)
+        public string Method { get; set; } = "";
+        public string Path { get; set; } = "";
+        public string? Controller { get; set; }
+        public string? Action { get; set; }
+        public string? RouteValuesJson { get; set; }
+        public string? QueryString { get; set; }
+        public int StatusCode { get; set; }
+        public int DurationMs { get; set; }
+        public string? Ip { get; set; }
+        public string? ClientIp { get; set; }    // <- your service expects this name
+        public string? UserAgent { get; set; }
 
-        public DateTime WhenUtc { get; set; } = DateTime.UtcNow;
-
-        [MaxLength(200)]
-        public string? UserName { get; set; }  // set if you add auth later
-
-        [MaxLength(64)]
-        public string? ClientIp { get; set; }
-
-        public string? BeforeJson { get; set; }
-        public string? AfterJson { get; set; }
+        // Change metadata (used by Services/AuditLogger.cs)
+        public string? Entity { get; set; }      // e.g., "Item", "Request"
+        public string? EntityId { get; set; }    // e.g., "42"
+        public string? BeforeJson { get; set; }  // serialized "before" state
+        public string? AfterJson { get; set; }   // serialized "after" state
     }
 }

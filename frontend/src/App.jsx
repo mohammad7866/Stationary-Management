@@ -13,7 +13,7 @@ import Deliveries from "./pages/Deliveries";
 import Dashboard from "./pages/Dashboard";
 import Suppliers from "./pages/Suppliers";
 import Forbidden from "./pages/Forbidden";
-
+import NotFound from "./pages/NotFound";
 function Nav() {
   const { token, roles = [], logout } = useAuth();
 
@@ -55,7 +55,7 @@ export default function App() {
             <Route
               path="/inventory"
               element={
-                <ProtectedRoute roles={["Admin","SuperAdmin"]}>
+                <ProtectedRoute roles={["User","Admin","SuperAdmin"]}>
                   <Inventory />
                 </ProtectedRoute>
               }
@@ -87,6 +87,9 @@ export default function App() {
 
             {/* forbidden fallback */}
             <Route path="/403" element={<Forbidden />} />
+
+            <Route path="*" element={<NotFound />} />
+
           </Routes>
         </div>
       </Router>

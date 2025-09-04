@@ -3,16 +3,8 @@ import React from "react";
 import { useAuth } from "./AuthContext";
 import { can } from "./permissions";
 
-/**
- * RoleGate hides its children unless the current user is allowed
- * based on the feature name in permissions.js.
- *
- * Usage:
- *   <RoleGate feature="Inventory">
- *     <button>Adjust Stock</button>
- *   </RoleGate>
- */
-export default function RoleGate({ feature, children }) {
+export default function RoleGate({ feature, children, fallback = null }) {
   const { roles = [] } = useAuth();
-  return can(roles, feature) ? <>{children}</> : null;
+  if (!feature) return null;
+  return can(roles, feature) ? children : fallback;
 }

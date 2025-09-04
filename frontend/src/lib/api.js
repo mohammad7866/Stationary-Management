@@ -13,16 +13,25 @@ function toQuery(obj) {
 }
 
 function http(path, opts = {}) {
-  // Align with AuthContext: use the "token" key
   const token = localStorage.getItem("token") || "";
   const headers = {
     "Content-Type": "application/json",
     ...(opts.headers || {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+
   return fetch(`${BASE}${path}`, { ...opts, headers }).then(async (r) => {
+    // Handle unauthorized early
+    if (r.status === 401) {
+      try { localStorage.removeItem("token"); } catch {}
+      // optional: broadcast logout if you want other tabs to react
+      // window.dispatchEvent(new Event("auth:logout"));
+      throw new Error("Unauthorized");
+    }
+
     const text = await r.text();
     const data = text ? (() => { try { return JSON.parse(text); } catch { return text; } })() : null;
+
     if (!r.ok) {
       const msg =
         (data && (data.title || data.error || data.message)) ||
@@ -36,6 +45,7 @@ function http(path, opts = {}) {
     return data;
   });
 }
+
 
 /* ===== Auth ===== */
 export const Auth = {

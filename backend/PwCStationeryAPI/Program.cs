@@ -9,11 +9,17 @@ using Microsoft.OpenApi.Models;
 using PwCStationeryAPI.Data;
 using PwCStationeryAPI.Models;
 using PwCStationeryAPI.Services;
+using PwCStationeryAPI.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ========= Services (ALL before Build) =========
-builder.Services.AddControllers();
+builder.Services.AddScoped<AuditLogActionFilter>();
+
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<AuditLogActionFilter>();  // global auditing
+});
 
 // Swagger + XML comments + JWT auth button
 builder.Services.AddEndpointsApiExplorer();
