@@ -125,5 +125,11 @@ export const Requests = {
   remove: (id) => http(`/api/Requests/${id}`, { method: "DELETE" }),
 };
 
+/* ===== Audit Logs ===== */
+export const AuditLogs = {
+  list: (p) => http(`/api/AuditLogs${toQuery(p)}`),
+};
+
+
 /* ===== named utils (and http) ===== */
 export { http, toQuery, BASE };

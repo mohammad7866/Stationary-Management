@@ -1,5 +1,7 @@
 // src/auth/permissions.js
 
+import { AuditLogs } from "../lib/api";
+
 // Pages (visibility in nav/routes)
 export const permissions = {
   Dashboard:       ["User", "Admin", "SuperAdmin"],
@@ -7,7 +9,7 @@ export const permissions = {
   Requests:        ["User", "Admin", "SuperAdmin"],
   Deliveries:      ["Admin", "SuperAdmin"],
   Suppliers:       ["Admin", "SuperAdmin"],
-
+  AuditLog:        ["SuperAdmin"],
   // Fine-grained actions (buttons/controls)
   InventoryManage: ["Admin", "SuperAdmin"],          // edit, adjust, add
   InventoryDelete: ["SuperAdmin"],                   // delete item/row
