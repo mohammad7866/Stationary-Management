@@ -19,6 +19,10 @@ builder.Services.AddScoped<AuditLogActionFilter>();
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<AuditLogActionFilter>();  // global auditing
+})
+.AddJsonOptions(o =>
+{
+    o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 });
 
 // Swagger + XML comments + JWT auth button

@@ -14,6 +14,8 @@ import Dashboard from "./pages/Dashboard";
 import Suppliers from "./pages/Suppliers";
 import Forbidden from "./pages/Forbidden";
 import NotFound from "./pages/NotFound";
+import AuditLog from "./pages/AuditLog";
+
 function Nav() {
   const { token, roles = [], logout } = useAuth();
 
@@ -24,6 +26,7 @@ function Nav() {
       {can(roles, "Requests")   && <Link to="/requests">Requests</Link>}
       {can(roles, "Deliveries") && <Link to="/deliveries">Deliveries</Link>}
       {can(roles, "Suppliers")  && <Link to="/suppliers">Suppliers</Link>}
+      {can(roles, "AuditLog")  && <Link to="/audit">Activity Log</Link>}
 
       <div style={{flex:1}} />
       {token ? <button onClick={logout}>Logout</button> : <Link to="/login">Login</Link>}
@@ -84,6 +87,16 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/audit"
+              element={
+                <ProtectedRoute roles={["SuperAdmin"]}>
+                  <AuditLog />
+                </ProtectedRoute>
+              }
+            />
+
+            
 
             {/* forbidden fallback */}
             <Route path="/403" element={<Forbidden />} />
