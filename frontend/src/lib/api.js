@@ -99,9 +99,15 @@ export const StockLevels = {
   get: (id) => http(`/api/StockLevels/${id}`),
   create: (data) => http(`/api/StockLevels`, { method: "POST", body: JSON.stringify(data) }),
   update: (id, data) => http(`/api/StockLevels/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  adjust: (id, delta) => http(`/api/StockLevels/${id}/adjust`, { method: "POST", body: JSON.stringify(delta) }),
+  adjust: (id, deltaOrBody, maybeReason) => {
+    const body = (typeof deltaOrBody === "object" && deltaOrBody !== null)
+      ? deltaOrBody                                   // e.g. { delta: -6, reason: "Fix" }
+      : { delta: deltaOrBody, reason: maybeReason };  // e.g. -6, "Fix"
+    return http(`/api/StockLevels/${id}/adjust`, { method: "POST", body: JSON.stringify(body) });
+  },
   remove: (id) => http(`/api/StockLevels/${id}`, { method: "DELETE" }),
 };
+
 
 /* ===== Deliveries ===== */
 export const Deliveries = {
@@ -128,6 +134,19 @@ export const Requests = {
 /* ===== Audit Logs ===== */
 export const AuditLogs = {
   list: (p) => http(`/api/AuditLogs${toQuery(p)}`),
+};
+
+/* ===== Issues ===== */
+export const Issues = {
+  create: (data) => http(`/api/Issues`, { method: "POST", body: JSON.stringify(data) }),
+  get:    (id)    => http(`/api/Issues/${id}`),
+  byRequest: (requestId) => http(`/api/Issues/by-request/${requestId}`),
+};
+
+/* ===== Returns ===== */
+export const Returns = {
+  create:   (data)      => http(`/api/Returns`, { method: "POST", body: JSON.stringify(data) }),
+  byIssue:  (issueId)   => http(`/api/Returns/by-issue/${issueId}`),
 };
 
 

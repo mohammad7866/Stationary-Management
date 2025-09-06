@@ -15,6 +15,10 @@ import Suppliers from "./pages/Suppliers";
 import Forbidden from "./pages/Forbidden";
 import NotFound from "./pages/NotFound";
 import AuditLog from "./pages/AuditLog";
+import IssueCreate from "./pages/IssueCreate";
+import IssueDetails from "./pages/IssueDetails";
+import ReturnCreate from "./pages/ReturnCreate";
+
 
 function Nav() {
   const { token, roles = [], logout } = useAuth();
@@ -95,6 +99,33 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/issue/:requestId"
+              element={
+                <ProtectedRoute roles={["Admin","SuperAdmin"]}>
+                  <IssueCreate />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/issue/details/:id"
+              element={
+                <ProtectedRoute roles={["Admin","SuperAdmin"]}>
+                  <IssueDetails />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/return/:issueId"
+              element={
+                <ProtectedRoute roles={["Admin","SuperAdmin"]}>
+                  <ReturnCreate />
+                </ProtectedRoute>
+              }
+            />
+
 
             
 

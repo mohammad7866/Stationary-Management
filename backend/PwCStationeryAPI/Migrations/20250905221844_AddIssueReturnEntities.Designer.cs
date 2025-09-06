@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PwCStationeryAPI.Data;
 
@@ -10,9 +11,11 @@ using PwCStationeryAPI.Data;
 namespace PwCStationeryAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250905221844_AddIssueReturnEntities")]
+    partial class AddIssueReturnEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.8");
@@ -373,13 +376,14 @@ namespace PwCStationeryAPI.Migrations
 
                     b.Property<string>("IssuedByUserId")
                         .IsRequired()
-                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("RequestId")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IssuedByUserId");
 
                     b.HasIndex("RequestId")
                         .IsUnique();
@@ -401,6 +405,9 @@ namespace PwCStationeryAPI.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("UnitPriceAtIssue")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -524,12 +531,13 @@ namespace PwCStationeryAPI.Migrations
 
                     b.Property<string>("ReturnedByUserId")
                         .IsRequired()
-                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("IssueId");
+
+                    b.HasIndex("ReturnedByUserId");
 
                     b.ToTable("Returns");
                 });
@@ -677,11 +685,19 @@ namespace PwCStationeryAPI.Migrations
 
             modelBuilder.Entity("PwCStationeryAPI.Models.Issue", b =>
                 {
+                    b.HasOne("PwCStationeryAPI.Models.ApplicationUser", "IssuedBy")
+                        .WithMany()
+                        .HasForeignKey("IssuedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("PwCStationeryAPI.Models.Request", "Request")
                         .WithMany()
                         .HasForeignKey("RequestId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("IssuedBy");
 
                     b.Navigation("Request");
                 });
@@ -731,7 +747,15 @@ namespace PwCStationeryAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PwCStationeryAPI.Models.ApplicationUser", "ReturnedBy")
+                        .WithMany()
+                        .HasForeignKey("ReturnedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Issue");
+
+                    b.Navigation("ReturnedBy");
                 });
 
             modelBuilder.Entity("PwCStationeryAPI.Models.ReturnLine", b =>
