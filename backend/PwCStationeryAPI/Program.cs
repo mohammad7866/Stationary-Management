@@ -19,19 +19,15 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Filters
 builder.Services.AddScoped<AuditLogActionFilter>();
-
-// Audit logger
 builder.Services.AddScoped<IStockMutationService, StockMutationService>();
 builder.Services.AddScoped<IStockAdjustService, StockAdjustService>(); // ← add this
 builder.Services.AddScoped<IAuditLogger, NoopAuditLogger>();
-builder.Services.AddScoped<AuditLogger>(); // if any controller requests the concrete                                           // concrete for controllers that request it
+builder.Services.AddScoped<AuditLogger>(); // if any controller requests the concrete
 builder.Services.AddHttpContextAccessor();                    // if AuditLogger needs it
-
-
-// Issue/Return service
-// services
 builder.Services.AddScoped<IStockMutationService, StockMutationService>();
-builder.Services.AddScoped<IStockAdjustService, StockAdjustService>(); // 👈 add this
+builder.Services.AddScoped<IStockAdjustService, StockAdjustService>(); 
+builder.Services.AddScoped<IReplenishmentService, ReplenishmentService>();
+
 
 // Controllers + JSON (ignore cycles to avoid 500s on EF graphs)
 builder.Services.AddControllers(options =>

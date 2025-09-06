@@ -14,8 +14,10 @@ export const permissions = {
   InventoryManage: ["Admin", "SuperAdmin"],          // edit, adjust, add
   InventoryDelete: ["SuperAdmin"],                   // delete item/row
   RequestsApprove: ["Admin", "SuperAdmin"],          // approve/reject
-  RequestsDelete:  ["SuperAdmin"],                   // delete request
+  RequestsDelete:  ["SuperAdmin"],  
+  DeliveriesCreate: ["Admin","SuperAdmin"],
 };
+                 // delete request
 
 export function can(roleList = [], feature) {
   const allowed = permissions[feature] || [];
