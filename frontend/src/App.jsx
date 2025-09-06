@@ -18,6 +18,7 @@ import AuditLog from "./pages/AuditLog";
 import IssueCreate from "./pages/IssueCreate";
 import IssueDetails from "./pages/IssueDetails";
 import ReturnCreate from "./pages/ReturnCreate";
+import ReplenishmentPage from "./pages/Replenishment";
 
 
 function Nav() {
@@ -27,6 +28,7 @@ function Nav() {
     <nav style={{ marginBottom: "1rem", display: "flex", gap: "1rem", alignItems: "center" }}>
       {can(roles, "Dashboard")  && <Link to="/">Dashboard</Link>}
       {can(roles, "Inventory")  && <Link to="/inventory">Inventory</Link>}
+      {can(roles, "DeliveriesCreate") && <Link to="/replenishment">Replenishment</Link>}
       {can(roles, "Requests")   && <Link to="/requests">Requests</Link>}
       {can(roles, "Deliveries") && <Link to="/deliveries">Deliveries</Link>}
       {can(roles, "Suppliers")  && <Link to="/suppliers">Suppliers</Link>}
@@ -122,6 +124,14 @@ export default function App() {
               element={
                 <ProtectedRoute roles={["Admin","SuperAdmin"]}>
                   <ReturnCreate />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/replenishment"
+              element={
+                <ProtectedRoute roles={["Admin","SuperAdmin"]}>
+                  <ReplenishmentPage />
                 </ProtectedRoute>
               }
             />

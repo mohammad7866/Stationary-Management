@@ -99,14 +99,30 @@ export const StockLevels = {
   get: (id) => http(`/api/StockLevels/${id}`),
   create: (data) => http(`/api/StockLevels`, { method: "POST", body: JSON.stringify(data) }),
   update: (id, data) => http(`/api/StockLevels/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+
+  // Sends a raw number when no reason is passed (matches Swagger),
+  // and sends { delta, reason } when a reason is provided or an object is passed in.
   adjust: (id, deltaOrBody, maybeReason) => {
-    const body = (typeof deltaOrBody === "object" && deltaOrBody !== null)
-      ? deltaOrBody                                   // e.g. { delta: -6, reason: "Fix" }
-      : { delta: deltaOrBody, reason: maybeReason };  // e.g. -6, "Fix"
-    return http(`/api/StockLevels/${id}/adjust`, { method: "POST", body: JSON.stringify(body) });
+    let payload;
+    if (typeof deltaOrBody === "object" && deltaOrBody !== null) {
+      // e.g. { delta: -6, reason: "reconcile" }
+      payload = deltaOrBody;
+    } else {
+      const num = Number(deltaOrBody);
+      payload = (maybeReason === undefined || maybeReason === null)
+        ? num                    // 🔹 raw number (what Swagger sends)
+        : { delta: num, reason: maybeReason }; // object if a reason is supplied
+    }
+    return http(`/api/StockLevels/${id}/adjust`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
   },
+
   remove: (id) => http(`/api/StockLevels/${id}`, { method: "DELETE" }),
 };
+
+
 
 
 /* ===== Deliveries ===== */
@@ -149,6 +165,11 @@ export const Returns = {
   byIssue:  (issueId)   => http(`/api/Returns/by-issue/${issueId}`),
 };
 
+/* ===== Replenishment ===== */
+export const Replenishment = {
+suggestions: (params) => http(`/api/Replenishment/suggestions${toQuery(params)}`),
+raise: (data) => http(`/api/Replenishment/raise`, { method: "POST", body: JSON.stringify(data) }),
+};
 
 /* ===== named utils (and http) ===== */
 export { http, toQuery, BASE };
