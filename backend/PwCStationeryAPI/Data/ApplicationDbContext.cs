@@ -1,4 +1,3 @@
-// backend/PwCStationeryAPI/Data/ApplicationDbContext.cs
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PwCStationeryAPI.Models;
@@ -17,6 +16,13 @@ namespace PwCStationeryAPI.Data
         public DbSet<Request> Requests => Set<Request>();
         public DbSet<Delivery> Deliveries => Set<Delivery>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+        // Issue/Return entities
+        public DbSet<Issue> Issues => Set<Issue>();
+        public DbSet<IssueLine> IssueLines => Set<IssueLine>();
+        public DbSet<Return> Returns => Set<Return>();
+        public DbSet<ReturnLine> ReturnLines => Set<ReturnLine>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -95,7 +101,6 @@ namespace PwCStationeryAPI.Data
             modelBuilder.Entity<AuditLog>(b =>
             {
                 b.HasKey(a => a.Id);
-
                 b.Property(a => a.Method).HasMaxLength(16);
                 b.Property(a => a.Path).HasMaxLength(512);
                 b.Property(a => a.Controller).HasMaxLength(128);
@@ -105,12 +110,66 @@ namespace PwCStationeryAPI.Data
                 b.Property(a => a.RolesCsv).HasMaxLength(256);
                 b.Property(a => a.Ip).HasMaxLength(64);
                 b.Property(a => a.UserAgent).HasMaxLength(512);
-
                 b.HasIndex(a => a.TimestampUtc);
                 b.HasIndex(a => a.Path);
                 b.HasIndex(a => new { a.Method, a.StatusCode });
             });
 
+            // ---------- Issue ----------
+            modelBuilder.Entity<Issue>(b =>
+            {
+                b.HasKey(i => i.Id);
+                b.HasIndex(i => i.RequestId).IsUnique(); // one Issue per Request
+
+                b.HasOne(i => i.Request)
+                    .WithMany()
+                    .HasForeignKey(i => i.RequestId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // user link is just a string (no FK)
+                b.Property(i => i.IssuedByUserId).HasMaxLength(128);
+            });
+
+            modelBuilder.Entity<IssueLine>(b =>
+            {
+                b.HasKey(l => l.Id);
+                b.HasOne(l => l.Issue)
+                    .WithMany(i => i.Lines)
+                    .HasForeignKey(l => l.IssueId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(l => l.Item)
+                    .WithMany()
+                    .HasForeignKey(l => l.ItemId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ---------- Return ----------
+            modelBuilder.Entity<Return>(b =>
+            {
+                b.HasKey(r => r.Id);
+                b.HasOne(r => r.Issue)
+                    .WithMany()
+                    .HasForeignKey(r => r.IssueId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // user link is just a string (no FK)
+                b.Property(r => r.ReturnedByUserId).HasMaxLength(128);
+            });
+
+            modelBuilder.Entity<ReturnLine>(b =>
+            {
+                b.HasKey(l => l.Id);
+                b.HasOne(l => l.Return)
+                    .WithMany(r => r.Lines)
+                    .HasForeignKey(l => l.ReturnId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(l => l.Item)
+                    .WithMany()
+                    .HasForeignKey(l => l.ItemId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
         }
     }
 }

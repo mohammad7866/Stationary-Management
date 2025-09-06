@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Requests, Items, Offices } from "../lib/api";
+import { Requests, Items, Offices, Issues } from "../lib/api"; // + Issues
 import { useAuth } from "../auth/AuthContext";
 import RoleGate from "../auth/RoleGate";
 import { can } from "../auth/permissions";
+import { useNavigate } from "react-router-dom"; // already present
 
 // yyyy-mm-dd HH:mm
 function fmtIsoDateTime(iso) {
@@ -26,6 +27,8 @@ const statusColors = {
 export default function RequestsPage() {
   const { roles = [] } = useAuth();
   const showActionsCol = can(roles, "RequestsApprove") || can(roles, "RequestsDelete");
+
+  const nav = useNavigate(); // + navigate
 
   const [list, setList] = useState([]);
   const [items, setItems] = useState([]);
@@ -143,6 +146,20 @@ export default function RequestsPage() {
     finally { setBusyId(null); }
   }
 
+  // + View existing Issue for a Request (navigates if found)
+  async function viewIssueForRequest(requestId) {
+    try {
+      const issue = await Issues.byRequest(requestId);
+      if (issue?.id) {
+        nav(`/issue/details/${issue.id}`);
+      } else {
+        alert("No issue exists for this request yet.");
+      }
+    } catch (e) {
+      alert(e.message || "Failed to load issue");
+    }
+  }
+
   const baseHeader = (
     <>
       <th style={thStyle}>Item</th>
@@ -240,10 +257,32 @@ export default function RequestsPage() {
                       </RoleGate>
                     )}
 
+                    {/* Issue / View Issue (Admin/SuperAdmin) — only when Approved */}
+                    {r.status === "Approved" && (
+                      <RoleGate feature="RequestsApprove">
+                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                          <button
+                            style={button}
+                            onClick={() => nav(`/issue/${r.id}`)}
+                            title="Create Issue"
+                          >
+                            Issue
+                          </button>
+                          <button
+                            style={ghostButton}
+                            onClick={() => viewIssueForRequest(r.id)}
+                            title="Open existing Issue (if any)"
+                          >
+                            View Issue
+                          </button>
+                        </div>
+                      </RoleGate>
+                    )}
+
                     {/* Delete (SuperAdmin) */}
                     <RoleGate feature="RequestsDelete">
                       <button
-                        style={ghostButton}
+                        style={{ ...ghostButton, marginTop: 8 }}
                         disabled={busyId === r.id}
                         onClick={()=>onDelete(r.id)}
                         title="Delete (SuperAdmin)"

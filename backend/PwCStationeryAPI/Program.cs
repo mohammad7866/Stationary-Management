@@ -1,31 +1,51 @@
 ﻿// backend/PwCStationeryAPI/Program.cs
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PwCStationeryAPI.Data;
+using PwCStationeryAPI.Filters;
 using PwCStationeryAPI.Models;
 using PwCStationeryAPI.Services;
-using PwCStationeryAPI.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ========= Services (ALL before Build) =========
+// ========= Services =========
+
+// Filters
 builder.Services.AddScoped<AuditLogActionFilter>();
 
+// Audit logger
+builder.Services.AddScoped<IStockMutationService, StockMutationService>();
+builder.Services.AddScoped<IStockAdjustService, StockAdjustService>(); // ← add this
+builder.Services.AddScoped<IAuditLogger, NoopAuditLogger>();
+builder.Services.AddScoped<AuditLogger>(); // if any controller requests the concrete                                           // concrete for controllers that request it
+builder.Services.AddHttpContextAccessor();                    // if AuditLogger needs it
+
+
+// Issue/Return service
+// services
+builder.Services.AddScoped<IStockMutationService, StockMutationService>();
+builder.Services.AddScoped<IStockAdjustService, StockAdjustService>(); // 👈 add this
+
+// Controllers + JSON (ignore cycles to avoid 500s on EF graphs)
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<AuditLogActionFilter>();  // global auditing
 })
 .AddJsonOptions(o =>
 {
-    o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    o.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    o.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    o.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles; // 🚩 key line
 });
 
-// Swagger + XML comments + JWT auth button
+// Swagger (XML comments + JWT auth button + local server)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -60,8 +80,7 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    // 👇 Helps Swagger "Try it out" use the correct base URL.
-    // Change the port if your HTTPS profile is different in launchSettings.json.
+    // Make Swagger "Try it out" use the right base URL (adjust if your launchSettings differ)
     c.AddServer(new OpenApiServer { Url = "https://localhost:7043" });
 });
 
@@ -102,7 +121,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// CORS (Vite dev server + API origin)
+// CORS (Vite dev server + API)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -114,13 +133,11 @@ builder.Services.AddCors(options =>
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
-    // .AllowCredentials() // only if you later use cookies
     );
 });
 
-// HttpContext + Audit logger
+// Misc
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<AuditLogger>();
 
 // ========= Build app =========
 var app = builder.Build();
@@ -128,11 +145,26 @@ var app = builder.Build();
 // ========= Pipeline =========
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage(); // 👈 show real errors during dev
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "PwC Stationery API v1");
         c.DocumentTitle = "PwC Stationery API";
+    });
+}
+else
+{
+    // Generic handler only in non-dev
+    app.UseExceptionHandler(errorApp =>
+    {
+        errorApp.Run(async context =>
+        {
+            var problem = Results.Problem(
+                title: "Unexpected error",
+                statusCode: StatusCodes.Status500InternalServerError);
+            await problem.ExecuteAsync(context);
+        });
     });
 }
 
@@ -143,31 +175,20 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Global error handler → ProblemDetails
-app.UseExceptionHandler(errorApp =>
-{
-    errorApp.Run(async context =>
-    {
-        var problem = Results.Problem(
-            title: "Unexpected error",
-            statusCode: StatusCodes.Status500InternalServerError);
-        await problem.ExecuteAsync(context);
-    });
-});
-
-// Migrate DB + seed data (domain + auth users/roles)
+// ========= DB migrate + seed =========
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
 
-    // Seed your domain data
+    // Seed domain data
     DbInitializer.Initialize(db);
 
     // Seed auth users/roles
     await AuthSeeder.SeedAsync(scope.ServiceProvider);
 }
 
+// ========= Endpoints =========
 app.MapControllers();
 
 // Redirect root to Swagger UI

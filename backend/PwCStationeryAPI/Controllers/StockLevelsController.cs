@@ -7,7 +7,7 @@ using PwCStationeryAPI.Models;
 using PwCStationeryAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 
-namespace PwCStationERYAPI.Controllers
+namespace PwCStationeryAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
