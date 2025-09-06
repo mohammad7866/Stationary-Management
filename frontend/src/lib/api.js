@@ -1,4 +1,15 @@
 // frontend/src/lib/api.js
+
+let AUTH_TOKEN = ""; // in-memory source of truth (prevents timing races)
+
+export function setAuthToken(t) {
+  AUTH_TOKEN = t || "";
+  try {
+    if (AUTH_TOKEN) localStorage.setItem("token", AUTH_TOKEN);
+    else localStorage.removeItem("token");
+  } catch {}
+}
+
 const BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 function toQuery(obj) {
@@ -12,8 +23,14 @@ function toQuery(obj) {
   return q ? `?${q}` : "";
 }
 
+function safeParse(text) {
+  try { return JSON.parse(text); } catch { return text; }
+}
+
 function http(path, opts = {}) {
-  const token = localStorage.getItem("token") || "";
+  // Prefer in-memory token; fall back to localStorage (e.g., on hard refresh before context mounts)
+  const token = AUTH_TOKEN || localStorage.getItem("token") || "";
+
   const headers = {
     "Content-Type": "application/json",
     ...(opts.headers || {}),
@@ -21,18 +38,11 @@ function http(path, opts = {}) {
   };
 
   return fetch(`${BASE}${path}`, { ...opts, headers }).then(async (r) => {
-    // Handle unauthorized early
-    if (r.status === 401) {
-      try { localStorage.removeItem("token"); } catch {}
-      // optional: broadcast logout if you want other tabs to react
-      // window.dispatchEvent(new Event("auth:logout"));
-      throw new Error("Unauthorized");
-    }
-
     const text = await r.text();
-    const data = text ? (() => { try { return JSON.parse(text); } catch { return text; } })() : null;
+    const data = text ? safeParse(text) : null;
 
     if (!r.ok) {
+      // ❌ Do NOT auto-clear token here — a single early 401 can happen during login races
       const msg =
         (data && (data.title || data.error || data.message)) ||
         text ||
@@ -46,15 +56,13 @@ function http(path, opts = {}) {
   });
 }
 
-
 /* ===== Auth ===== */
 export const Auth = {
   login: (body) => http(`/api/Auth/login`, { method: "POST", body: JSON.stringify(body) }),
   me: (token) =>
-  fetch(`${BASE}/api/Auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  }).then((r) => r.json()),
-
+    fetch(`${BASE}/api/Auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((r) => r.json()),
 };
 
 /* ===== Items ===== */
@@ -100,18 +108,15 @@ export const StockLevels = {
   create: (data) => http(`/api/StockLevels`, { method: "POST", body: JSON.stringify(data) }),
   update: (id, data) => http(`/api/StockLevels/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 
-  // Sends a raw number when no reason is passed (matches Swagger),
-  // and sends { delta, reason } when a reason is provided or an object is passed in.
   adjust: (id, deltaOrBody, maybeReason) => {
     let payload;
     if (typeof deltaOrBody === "object" && deltaOrBody !== null) {
-      // e.g. { delta: -6, reason: "reconcile" }
       payload = deltaOrBody;
     } else {
       const num = Number(deltaOrBody);
       payload = (maybeReason === undefined || maybeReason === null)
-        ? num                    // 🔹 raw number (what Swagger sends)
-        : { delta: num, reason: maybeReason }; // object if a reason is supplied
+        ? num
+        : { delta: num, reason: maybeReason };
     }
     return http(`/api/StockLevels/${id}/adjust`, {
       method: "POST",
@@ -121,9 +126,6 @@ export const StockLevels = {
 
   remove: (id) => http(`/api/StockLevels/${id}`, { method: "DELETE" }),
 };
-
-
-
 
 /* ===== Deliveries ===== */
 export const Deliveries = {
@@ -167,9 +169,8 @@ export const Returns = {
 
 /* ===== Replenishment ===== */
 export const Replenishment = {
-suggestions: (params) => http(`/api/Replenishment/suggestions${toQuery(params)}`),
-raise: (data) => http(`/api/Replenishment/raise`, { method: "POST", body: JSON.stringify(data) }),
+  suggestions: (params) => http(`/api/Replenishment/suggestions${toQuery(params)}`),
+  raise: (data) => http(`/api/Replenishment/raise`, { method: "POST", body: JSON.stringify(data) }),
 };
 
-/* ===== named utils (and http) ===== */
 export { http, toQuery, BASE };
