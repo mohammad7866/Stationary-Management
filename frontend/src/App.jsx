@@ -1,4 +1,3 @@
-// src/App.jsx
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 
@@ -19,7 +18,7 @@ import IssueCreate from "./pages/IssueCreate";
 import IssueDetails from "./pages/IssueDetails";
 import ReturnCreate from "./pages/ReturnCreate";
 import ReplenishmentPage from "./pages/Replenishment";
-
+import LowStockAlertModal from "./components/LowStockAlertModel";
 
 function Nav() {
   const { token, roles = [], logout } = useAuth();
@@ -32,12 +31,18 @@ function Nav() {
       {can(roles, "Requests")   && <Link to="/requests">Requests</Link>}
       {can(roles, "Deliveries") && <Link to="/deliveries">Deliveries</Link>}
       {can(roles, "Suppliers")  && <Link to="/suppliers">Suppliers</Link>}
-      {can(roles, "AuditLog")  && <Link to="/audit">Activity Log</Link>}
+      {can(roles, "AuditLog")   && <Link to="/audit">Activity Log</Link>}
 
       <div style={{flex:1}} />
       {token ? <button onClick={logout}>Logout</button> : <Link to="/login">Login</Link>}
     </nav>
   );
+}
+
+// ⬇️ shows popup on login for Admin/SuperAdmin
+function RoleAwareLowStock() {
+  const { roles = [], token } = useAuth();
+  return <LowStockAlertModal roles={roles} token={token} />;
 }
 
 export default function App() {
@@ -47,6 +52,9 @@ export default function App() {
         <div style={{ padding: "1rem", background: "#f8f9fa" }}>
           <h1>PwC Stationery Management System</h1>
           <Nav />
+
+          {/* popup mounted globally */}
+          <RoleAwareLowStock />
 
           <Routes>
             {/* public */}
@@ -109,7 +117,6 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/issue/details/:id"
               element={
@@ -118,7 +125,6 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-
             <Route
               path="/return/:issueId"
               element={
@@ -136,14 +142,9 @@ export default function App() {
               }
             />
 
-
-            
-
             {/* forbidden fallback */}
             <Route path="/403" element={<Forbidden />} />
-
             <Route path="*" element={<NotFound />} />
-
           </Routes>
         </div>
       </Router>

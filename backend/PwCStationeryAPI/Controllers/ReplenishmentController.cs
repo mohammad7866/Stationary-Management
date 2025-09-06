@@ -1,35 +1,55 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PwCStationeryAPI.Dtos.Replenishment;
-using PwCStationeryAPI.Services;
-using System.Security.Claims;
-
+using Microsoft.EntityFrameworkCore;
+using PwCStationeryAPI.Data;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace PwCStationeryAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin,SuperAdmin")] // managers can be added if you prefer
     public class ReplenishmentController : ControllerBase
     {
-        private readonly IReplenishmentService _svc;
-        public ReplenishmentController(IReplenishmentService svc) { _svc = svc; }
+        private readonly ApplicationDbContext _db;
 
-
-        [HttpGet("suggestions")]
-        public async Task<IActionResult> Suggestions([FromQuery] string? office = null, [FromQuery] int? minShortage = null)
+        public ReplenishmentController(ApplicationDbContext db)
         {
-            var data = await _svc.GetSuggestionsAsync(office, minShortage);
-            return Ok(data);
+            _db = db;
         }
 
+        public record LowStockSuggestionDto(
+            int StockLevelId,
+            string OfficeName,
+            string ItemName,
+            int Quantity,
+            int? ReorderThreshold,
+            string? SupplierName
+        );
 
-        [HttpPost("raise")]
-        public async Task<IActionResult> Raise([FromBody] RaiseDeliveriesDto dto)
+        // Only Admin/SuperAdmin can see low-stock suggestions
+        [HttpGet("suggestions")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
+        public async Task<ActionResult<IEnumerable<LowStockSuggestionDto>>> GetSuggestions(CancellationToken ct)
         {
-            var actorId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "system";
-            var created = await _svc.RaiseDeliveriesAsync(dto, actorId);
-            return Ok(new { created });
+            var suggestions = await _db.StockLevels
+                .AsNoTracking()
+                .Include(s => s.Item).ThenInclude(i => i.Supplier)
+                .Include(s => s.Office)
+                .Where(s => s.ReorderThreshold != null && s.Quantity <= s.ReorderThreshold)
+                .Select(s => new LowStockSuggestionDto(
+                    s.Id,
+                    s.Office.Name,
+                    s.Item.Name,
+                    s.Quantity,
+                    s.ReorderThreshold,
+                    s.Item.Supplier != null ? s.Item.Supplier.Name : null
+                ))
+                .ToListAsync(ct);
+
+            return Ok(suggestions);
         }
     }
 }

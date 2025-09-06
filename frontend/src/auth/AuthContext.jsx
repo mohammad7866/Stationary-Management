@@ -1,19 +1,21 @@
-// src/auth/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { jwtDecode } from "jwt-decode"; // v4+ uses named export
+import { jwtDecode } from "jwt-decode";
+import { setAuthToken } from "../lib/api"; // ⬅️ NEW: in-memory token setter
 
 // ---- Helpers ---------------------------------------------------------------
 
 function extractRoles(decoded) {
   if (!decoded || typeof decoded !== "object") return [];
 
-  // Common places roles can live in JWTs
+  // Common claim keys for roles
   const msClaim = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
   const altClaim = "roles";
 
   if (Array.isArray(decoded[altClaim])) return decoded[altClaim];
   if (Array.isArray(decoded[msClaim])) return decoded[msClaim];
 
+  // also handle a single 'role' value or array
+  if (Array.isArray(decoded.role)) return decoded.role;
   if (typeof decoded.role === "string") return [decoded.role];
   if (typeof decoded[msClaim] === "string") return [decoded[msClaim]];
 
@@ -25,14 +27,12 @@ function decodeToken(token) {
     const decoded = jwtDecode(token);
     const roles = extractRoles(decoded);
 
-    // Pull a couple of common identity fields if you want them in UI
     const user = {
       id: decoded.sub || decoded.nameid || decoded.userId || null,
       name: decoded.name || decoded.given_name || null,
       email: decoded.email || null,
     };
 
-    // JWT exp is seconds since epoch
     const expMs = decoded.exp ? decoded.exp * 1000 : null;
     const isExpired = expMs ? Date.now() >= expMs : false;
 
@@ -62,20 +62,29 @@ export default function AuthProvider({ children }) {
     }
   });
 
-  // Keep localStorage in sync when token changes
+  // Keep localStorage AND in-memory token in sync whenever token changes
   useEffect(() => {
     try {
-      if (token) localStorage.setItem("token", token);
-      else localStorage.removeItem("token");
+      if (token) {
+        localStorage.setItem("token", token);
+        setAuthToken(token);       // ⬅️ keep api.js in-memory token updated
+      } else {
+        localStorage.removeItem("token");
+        setAuthToken("");          // ⬅️ clear in-memory token
+      }
     } catch {
       // ignore storage errors
+      setAuthToken(token || "");
     }
   }, [token]);
 
   // Optional: respond to other tabs logging in/out
   useEffect(() => {
     const onStorage = (e) => {
-      if (e.key === "token") setToken(e.newValue);
+      if (e.key === "token") {
+        setToken(e.newValue);
+        setAuthToken(e.newValue || ""); // ⬅️ mirror across tabs immediately
+      }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -88,8 +97,15 @@ export default function AuthProvider({ children }) {
 
   const isAuthed = !!token && !isExpired;
 
-  const login = (newToken) => setToken(newToken);
-  const logout = () => setToken(null);
+  // ⬅️ IMPORTANT: set the in-memory token synchronously on login/logout
+  const login = (newToken) => {
+    setAuthToken(newToken || "");
+    setToken(newToken || null);
+  };
+  const logout = () => {
+    setAuthToken("");
+    setToken(null);
+  };
 
   const value = useMemo(
     () => ({ token, roles, user, isAuthed, login, logout }),
