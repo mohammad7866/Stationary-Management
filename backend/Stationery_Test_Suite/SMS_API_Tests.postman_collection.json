@@ -1,0 +1,135 @@
+{
+  "info": {
+    "name": "SMS API Tests",
+    "_postman_id": "8b8e3a36-1234-4b3c-9bcd-000000000001",
+    "description": "Stationery Management System API smoke & workflow tests. Update {{baseUrl}} and auth tokens before running.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"username\":\"admin\",\"password\":\"admin\"}"
+        }
+      }
+    },
+    {
+      "name": "Items - List",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/items",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Items - Create",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/items",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\":\"Pens\",\"stock\":50,\"reorderThreshold\":20}"
+        }
+      }
+    },
+    {
+      "name": "Requests - Create",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/requests",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"itemId\":1,\"quantity\":3}"
+        }
+      }
+    },
+    {
+      "name": "Approvals - Approve",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/approvals/1",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{managerToken}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Issues - Issue",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/issues/1",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Reports - Department Usage",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/reports/usage?department=Audit&from=2025-01-01&to=2025-12-31",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{managerToken}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Dashboard - Overview",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/dashboard",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ]
+      }
+    }
+  ],
+  "event": []
+}
