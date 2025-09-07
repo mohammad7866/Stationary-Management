@@ -5,6 +5,10 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PwCStationeryAPI", "PwCStationeryAPI\PwCStationeryAPI.csproj", "{8551A05D-65DD-427E-BEF9-40E67DBE1E0E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Stationery_Test_Suite", "Stationery_Test_Suite", "{6CDB46F0-C973-2B9A-1C92-7536F9A2EEEE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sms.Tests.Unit", "Stationery_Test_Suite\Sms.Tests.Unit\Sms.Tests.Unit.csproj", "{685901B9-CEC3-45DD-9270-BA23F8610B1F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,8 +31,23 @@ Global
 		{8551A05D-65DD-427E-BEF9-40E67DBE1E0E}.Release|x64.Build.0 = Release|Any CPU
 		{8551A05D-65DD-427E-BEF9-40E67DBE1E0E}.Release|x86.ActiveCfg = Release|Any CPU
 		{8551A05D-65DD-427E-BEF9-40E67DBE1E0E}.Release|x86.Build.0 = Release|Any CPU
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F}.Debug|x64.Build.0 = Debug|Any CPU
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F}.Debug|x86.Build.0 = Debug|Any CPU
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F}.Release|x64.ActiveCfg = Release|Any CPU
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F}.Release|x64.Build.0 = Release|Any CPU
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F}.Release|x86.ActiveCfg = Release|Any CPU
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{685901B9-CEC3-45DD-9270-BA23F8610B1F} = {6CDB46F0-C973-2B9A-1C92-7536F9A2EEEE}
 	EndGlobalSection
 EndGlobal
