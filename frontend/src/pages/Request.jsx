@@ -100,7 +100,7 @@ export default function RequestsPage() {
       const payload = {
         itemName: form.itemName,
         office: form.office,
-        quantity: qty,
+        quantity: qty,h
         purpose: form.purpose || "",
         status: form.status || "Pending",
       };
